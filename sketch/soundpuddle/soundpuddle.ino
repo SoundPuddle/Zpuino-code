@@ -127,14 +127,15 @@ void loop()
 	samp_done=0;
 
 	/* Do a FFT on the signal */
-
+#if 0
 	myfft.doFFT();
-
+#endif
 	/* Do complex sqrt */
 
 	Serial.print("Start run ");
 	Serial.println(run);
 	for (i=0;i<32;i++) {
+#if 0
 		FFT_64::fixed v = myfft.in_real[i];
 		v *= v;
 		v += (myfft.in_im[i]*myfft.in_im[i]);
@@ -142,6 +143,7 @@ void loop()
 		// Set V directly, after fsqrt
 
 		myfft.in_real[i].v = fsqrt16(v.asNative());
+#endif
 		printhex(myfft.in_real[i].v);
         Serial.println();
 	}
