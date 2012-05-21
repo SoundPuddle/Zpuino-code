@@ -18,6 +18,33 @@ FFT_64 myfft;
 
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
+/* Debugging */
+
+void printnibble(unsigned int c)
+{
+	c&=0xf;
+	if (c>9)
+		Serial.write(c+'a'-10);
+	else
+		Serial.write(c+'0');
+}
+
+void printhexbyte(unsigned int c)
+{
+	printnibble(c>>4);
+	printnibble(c);
+}
+
+void printhex(unsigned int c)
+{
+	printhexbyte(c>>24);
+	printhexbyte(c>>16);
+	printhexbyte(c>>8);
+	printhexbyte(c);
+}
+
+/* End debugging */
+
 void _zpu_interrupt()
 {
 	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
@@ -103,13 +130,11 @@ void setup()
 void loop()
 {
 	int i;
+	static int run=0;
 
 	/* Wait for sample buffer to fill */
 
 	while (samp_done==0) { }
-
-	printhex(sampbuf[0]);
-	Serial.println("");
 
 	/* Set up FFT */
 
@@ -127,6 +152,8 @@ void loop()
 
 	/* Do complex sqrt */
 
+	Serial.print("Start run");
+	Serial.println(run);
 	for (i=0;i<32;i++) {
 		FFT_64::fixed v = myfft.in_real[i];
 		v *= v;
@@ -135,5 +162,9 @@ void loop()
 		// Set V directly, after fsqrt
 
 		myfft.in_real[i].v = fsqrt16(v.asNative());
+		printhex(myfft.in_real[i].v);
+        Serial.println();
 	}
+	Serial.print("End run ");
+    Serial.println(run);
 }
