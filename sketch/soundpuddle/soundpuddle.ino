@@ -120,7 +120,7 @@ void loop()
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		/* Note: we have to tune <<8 here, and perform proper signed/unsigned conversion */
-		myfft.in_real[i] = FFT_64::fixed((unsigned)sampbuf[i]<<8,0);
+		myfft.in_real[i].v= sampbuf[i];// = FFT_64::fixed((unsigned)sampbuf[i]<<8,0);
 		myfft.in_im[i] = FFT_64::fixed(0);
 	}
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
@@ -145,10 +145,10 @@ void loop()
 		myfft.in_real[i].v = fsqrt16(v.asNative());
 #endif
 		printhex(myfft.in_real[i].v);
-        Serial.println();
+		Serial.println();
 	}
 	Serial.print("End run ");
-    Serial.println(run);
+	Serial.println(run);
 
     run++;
 }
