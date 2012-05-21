@@ -26,7 +26,7 @@ void _zpu_interrupt()
 {
 	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
 		//		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff) - 4096)<<5;
-		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff));
+		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff)-4096);
 		/*                                    <<5    signextend
 		 000 (0) -> -1            -2048 800h  10000h
 		 fff (4095) -> +1          2047 7ffh  0FFE0h
