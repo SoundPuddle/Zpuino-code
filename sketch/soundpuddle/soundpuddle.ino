@@ -18,30 +18,7 @@ FFT_64 myfft;
 
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
-/* Debugging */
-
-void printnibble(unsigned int c)
-{
-	c&=0xf;
-	if (c>9)
-		Serial.write(c+'a'-10);
-	else
-		Serial.write(c+'0');
-}
-
-void printhexbyte(unsigned int c)
-{
-	printnibble(c>>4);
-	printnibble(c);
-}
-
-void printhex(unsigned int c)
-{
-	printhexbyte(c>>24);
-	printhexbyte(c>>16);
-	printhexbyte(c>>8);
-	printhexbyte(c);
-}
+extern void printhex(unsigned int c);
 
 /* End debugging */
 
