@@ -29,10 +29,12 @@ void _zpu_interrupt()
 		/*                                    <<5    signextend
 		 000 (0) -> -1            -2048 800h  10000h
 		 fff (4095) -> +1          2047 7ffh  0FFE0h
-         800 (2048) -> Zero        0    0h    00000h
-        */
+		 800 (2048) -> Zero        0    0h    00000h
+		 */
 
-		USPIDATA16=0; // Start reading next sample
+		//USPIDATA16=0; // Start reading next sample
+		USPIDATA=0; // Start reading next sample
+		USPIDATA=0; // Start reading next sample
 
 		sampbufptr++;
 
@@ -87,8 +89,9 @@ void setup()
 	// Start reading immediatly */
 
 	digitalWrite(ADC_CS,LOW);
-	USPIDATA16 = 0;
-	//USPIDATA = 0;
+	//USPIDATA16 = 0;
+	USPIDATA = 0;
+    USPIDATA = 0;
 
 	/* Set up timer for a SAMPLING_FREQ frequency */
 
@@ -129,7 +132,7 @@ void loop()
 
 	/* Do complex sqrt */
 
-	Serial.print("Start run");
+	Serial.print("Start run ");
 	Serial.println(run);
 	for (i=0;i<32;i++) {
 		FFT_64::fixed v = myfft.in_real[i];
@@ -144,4 +147,8 @@ void loop()
 	}
 	Serial.print("End run ");
     Serial.println(run);
+
+    run++;
 }
+
+
