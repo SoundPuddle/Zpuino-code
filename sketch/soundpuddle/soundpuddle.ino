@@ -18,7 +18,38 @@ FFT_64 myfft;
 
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
+#define RGB_DATAPIN WING_C_15
+#define RGB_CLKPIN WING_C_14
+
 extern void printhex(unsigned int c);
+
+#define SPI3BASE  IO_SLOT(8)
+#define SPI3CTL  REGISTER(SPI3BASE,0)
+#define SPI3DATA REGISTER(SPI3BASE,1)
+
+#define NUMRGBLEDS 32
+
+void init_rgb()
+{
+	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP1);
+
+	// test
+	unsigned i;
+	for (i=0;i<NUMRGBLEDS;i++) {
+		SPI3DATA=0x8F;
+		SPI3DATA=0x80 + (i&0xf);
+		SPI3DATA=0x8F;
+	}
+	rgb_latch(NUMRGBLEDS);
+}
+
+
+void rgb_latch(unsigned n)
+{
+	n = ((n + 63) / 64) * 3;
+	while(n--)
+		SPI3DATA=0;
+}
 
 /* End debugging */
 
@@ -104,6 +135,7 @@ void setup()
 
 	Serial.begin(115200);
 	Serial.println("Starting");
+	init_rgb();
 }
 
 
