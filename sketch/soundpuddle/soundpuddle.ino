@@ -34,9 +34,6 @@ void _zpu_interrupt()
 		 */
 
 		//USPIDATA16=0; // Start reading next sample
-		USPIDATA=0; // Start reading next sample
-		USPIDATA=0; // Start reading next sample
-
 		sampbufptr++;
 
 		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
@@ -44,6 +41,8 @@ void _zpu_interrupt()
 			sampbufptr = 0;
 		}
 	}
+	USPIDATA=0; // Start reading next sample
+	USPIDATA=0; // Start reading next sample
 
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
