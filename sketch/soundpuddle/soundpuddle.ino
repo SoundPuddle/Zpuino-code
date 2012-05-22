@@ -31,7 +31,7 @@ extern void printhex(unsigned int c);
 
 void init_rgb()
 {
-	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP1);
+	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP0);
 
 }
 
@@ -44,6 +44,7 @@ void show_rgb()
 		SPI3DATA=0x80 + (i&0xf);
 		SPI3DATA=0x8F;
 	}
+
 	rgb_latch(NUMRGBLEDS);
 
 }
