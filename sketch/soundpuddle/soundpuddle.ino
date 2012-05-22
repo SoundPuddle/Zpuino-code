@@ -19,6 +19,7 @@ FFT_64 myfft;
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
 extern void printhex(unsigned int c);
+extern "C" const int testvector[32];
 
 /* End debugging */
 
@@ -26,7 +27,7 @@ void _zpu_interrupt()
 {
 	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
 		//		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff) - 4096)<<5;
-		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff)-2047)<<5;
+		sampbuf[sampbufptr] = testvector[sampbufptr];//((int)(USPIDATA & 0xffff)-2047)<<5;
 		/*                                    <<5    signextend
 		 000 (0) -> -1            -2048 800h  10000h
 		 fff (4095) -> +1          2047 7ffh  0FFE0h
@@ -121,30 +122,46 @@ void loop()
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		/* Note: we have to tune <<8 here, and perform proper signed/unsigned conversion */
-		myfft.in_real[i].v= sampbuf[i];// = FFT_64::fixed((unsigned)sampbuf[i]<<8,0);
+		myfft.in_real[i].v= (((int)sampbuf[i])>>5);// = FFT_64::fixed((unsigned)sampbuf[i]<<8,0);
 		myfft.in_im[i] = FFT_64::fixed(0);
 	}
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
 
 	/* Do a FFT on the signal */
-#if 0
+//#if 0
 	myfft.doFFT();
-#endif
+//#endif
 	/* Do complex sqrt */
 
 	Serial.print("Start run ");
 	Serial.println(run);
 	for (i=0;i<32;i++) {
-#if 0
+//#if 0
 		FFT_64::fixed v = myfft.in_real[i];
+		v.v>>=5;
 		v *= v;
-		v += (myfft.in_im[i]*myfft.in_im[i]);
+		if (v.v&0x80000000) {
+			Serial.println("V OVERFLOW!");
+			printhex(v.v);
+			Serial.println("");
+		}
+		FFT_64::fixed u = myfft.in_im[i];
+		u.v>>=5;
+		u *= u;
+
+		if (u.v&0x80000000) {
+			Serial.println("U OVERFLOW!");
+			printhex(u.v);
+			Serial.println("");
+		}
+		
+		v += u;
 
 		// Set V directly, after fsqrt
 
-		myfft.in_real[i].v = fsqrt16(v.asNative());
-#endif
+		myfft.in_real[i].sqrt();//v = fsqrt16(v.asNative());
+//#endif
 		printhex(myfft.in_real[i].v);
 		Serial.println();
 	}
