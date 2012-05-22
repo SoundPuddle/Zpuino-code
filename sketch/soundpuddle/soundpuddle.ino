@@ -143,10 +143,10 @@ void loop()
 		u *= u;
 
 		// Set V directly, after fsqrt
+        v += u;
+		v.v = fsqrt16(v.asNative());
 
-		myfft.in_real[i].v = fsqrt16(v.asNative());
-
-		printhex(myfft.in_real[i].v);
+		printhex(v.v);
 		Serial.println();
 	}
 	Serial.print("End run ");
