@@ -33,6 +33,10 @@ void init_rgb()
 {
 	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP1);
 
+}
+
+void show_rgb()
+{
 	// test
 	unsigned i;
 	for (i=0;i<NUMRGBLEDS;i++) {
@@ -41,8 +45,8 @@ void init_rgb()
 		SPI3DATA=0x8F;
 	}
 	rgb_latch(NUMRGBLEDS);
-}
 
+}
 
 void rgb_latch(unsigned n)
 {
@@ -183,7 +187,7 @@ void loop()
 	}
 	Serial.print("End run ");
 	Serial.println(run);
-
+    show_rgb();
     run++;
 }
 
