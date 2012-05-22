@@ -39,10 +39,21 @@ void show_rgb()
 {
 	// test
 	unsigned i;
+    unsigned char r,g,b;
 	for (i=0;i<NUMRGBLEDS;i++) {
-		SPI3DATA=0x8F;
-		SPI3DATA=0x80 + (i&0xf);
-		SPI3DATA=0x8F;
+		r=0;
+		g=0;
+		b=0;
+
+		switch(i%3) {
+		case 0: r=0x7f;break;
+		case 1: g=0x7f;break;
+        case 2: b=0x7f;break;
+		}
+
+		SPI3DATA=0x80|r;
+		SPI3DATA=0x80|g;
+		SPI3DATA=0x80|b;
 	}
 
 	rgb_latch(NUMRGBLEDS);
