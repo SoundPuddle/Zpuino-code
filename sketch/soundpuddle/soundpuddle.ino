@@ -59,8 +59,30 @@ void show_rgb()
 	}
 
 	rgb_latch(NUMRGBLEDS);
-
 }
+
+
+
+void show_rgb_fft()
+{
+	unsigned i;
+	for (i=0;i<NUMRGBLEDS;i++) {
+
+		unsigned val = myfft.in_real[i].v << 0;
+		if (val>0xff)
+			val=0xff;
+
+		unsigned rgbval = hsvtable[val & 0xff];
+
+		SPI3DATA= rgbval>>16;
+		SPI3DATA= rgbval>>24;
+		SPI3DATA= rgbval>>8;
+	}
+
+	rgb_latch(NUMRGBLEDS);
+}
+
+
 
 void rgb_latch(unsigned n)
 {
@@ -186,10 +208,10 @@ void loop()
 	Serial.println(run);
 	for (i=0;i<32;i++) {
 		FFT_64::fixed v = myfft.in_real[i];
-        v.v>>=5;
+		v.v>>=2;
 		v *= v;
 		FFT_64::fixed u = myfft.in_im[i];
-		u.v>>=5;
+		u.v>>=2;
 		u *= u;
 
 		// Set V directly, after fsqrt
