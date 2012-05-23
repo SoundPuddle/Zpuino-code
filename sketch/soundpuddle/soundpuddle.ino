@@ -68,7 +68,7 @@ void show_rgb_fft()
 	unsigned i;
 	for (i=0;i<NUMRGBLEDS;i++) {
 
-		unsigned val = myfft.in_real[i].v << 0;
+		unsigned val = myfft.in_real[i].v >>(32-18);
 		if (val>0xff)
 			val=0xff;
 
@@ -219,11 +219,13 @@ void loop()
 		v.v = fsqrt16(v.asNative());
 
 		printhex(v.v);
+		myfft.in_real[i] = v;
+
 		Serial.println();
 	}
 	Serial.print("End run ");
 	Serial.println(run);
-    show_rgb();
+    show_rgb_fft();
     run++;
 }
 
