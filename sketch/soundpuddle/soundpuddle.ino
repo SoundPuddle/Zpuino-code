@@ -67,8 +67,11 @@ void show_rgb_fft()
 {
 	unsigned i;
 	for (i=0;i<NUMRGBLEDS;i++) {
+		if (i>32)
+			continue;
 
-		unsigned val = myfft.in_real[i].v >>(32-18);
+		unsigned val = myfft.in_real[i].v >>8;
+
 		if (val>0xff)
 			val=0xff;
 
