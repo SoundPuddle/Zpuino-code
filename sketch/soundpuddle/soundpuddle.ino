@@ -15,6 +15,7 @@ static int sampbuf[SAMPLE_BUFFER_SIZE];
 volatile unsigned int sampbufptr;
 volatile int samp_done;
 FFT_64 myfft;
+extern "C" unsigned int hsvtable[256];
 
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
@@ -34,26 +35,27 @@ void init_rgb()
 	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP0);
 
 }
+unsigned rgboff=0;
 
 void show_rgb()
 {
 	// test
 	unsigned i;
-    unsigned char r,g,b;
+//	unsigned char r,g,b;
+	unsigned toff = rgboff & 0xff;
+	rgboff++;
+
+	unsigned reloff=toff;
+
 	for (i=0;i<NUMRGBLEDS;i++) {
-		r=0;
-		g=0;
-		b=0;
 
-		switch(i%3) {
-		case 0: r=0x7f;break;
-		case 1: g=0x7f;break;
-        case 2: b=0x7f;break;
-		}
+		unsigned rgbval = hsvtable[reloff++];
+		reloff&=0xff;
+		// Order: RRGGBB00
 
-		SPI3DATA=0x80|r;
-		SPI3DATA=0x80|g;
-		SPI3DATA=0x80|b;
+		SPI3DATA= rgbval>>16;
+		SPI3DATA= rgbval>>24;
+		SPI3DATA= rgbval>>8;
 	}
 
 	rgb_latch(NUMRGBLEDS);
