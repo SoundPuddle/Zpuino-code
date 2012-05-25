@@ -160,6 +160,9 @@ void dumpdata()
 
 void resetwindowfile()
 {
+	unsigned char dummy;
+    windowfile.read(&dummy,1);
+
 	// This will preload 1 byte
 	windowfile.seek(0,SEEK_SET);
 	// And we preload 3 more
