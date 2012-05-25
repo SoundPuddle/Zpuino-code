@@ -1,4 +1,5 @@
 #include "FFT.h"
+#include <SmallFS.h>
 
 #define SAMPLING_FREQ 44100
 #define SAMPLE_BUFFER_SIZE 64
@@ -9,7 +10,13 @@
 #define ADC_CS  WING_C_4
 
 // Helper for 16-bit SPI transfer
-#define USPIDATA16 *((&USPIDATA)+1)
+#define USPIDATA16 *((&USPIDATA)+2)
+#define USPIDATA24 *((&USPIDATA)+4)
+#define USPIDATA32 *((&USPIDATA)+6)
+
+#define SPIDATA16 *((&SPIDATA)+2)
+#define SPIDATA24 *((&SPIDATA)+4)
+#define SPIDATA32 *((&SPIDATA)+6)
 
 static int sampbuf[SAMPLE_BUFFER_SIZE];
 volatile unsigned int sampbufptr;
@@ -29,6 +36,8 @@ extern void printhex(unsigned int c);
 #define SPI3DATA REGISTER(SPI3BASE,1)
 
 #define NUMRGBLEDS 32
+
+SmallFSFile windowfile;
 
 void init_rgb()
 {
@@ -99,8 +108,20 @@ void rgb_latch(unsigned n)
 void _zpu_interrupt()
 {
 	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
-		//		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff) - 4096)<<5;
-		sampbuf[sampbufptr] = ((int)(USPIDATA & 0xffff)-2047);
+
+		FFT_64::fixed fv;
+        FFT_64::fixed winv;
+		fv.v = ((int)(USPIDATA & 0xffff)-2047);
+
+		
+		// Multiply by window
+		winv.v = SPIDATA32;
+		// Advance file
+		SPIDATA32=0;
+		fv *= winv;
+
+		sampbuf[sampbufptr] = fv.v;
+
 		/*                                    <<5    signextend
 		 000 (0) -> -1            -2048 800h  10000h
 		 fff (4095) -> +1          2047 7ffh  0FFE0h
@@ -135,6 +156,14 @@ void dumpdata()
 
 }
 
+void resetwindowfile()
+{
+	// This will preload 1 byte
+	windowfile.seek(0,SEEK_SET);
+	// And we preload 3 more
+	SPIDATA24 = 0;
+}
+
 void setup()
 {
 	sampbufptr=0;
@@ -163,6 +192,18 @@ void setup()
 	// Start reading immediatly */
 
 	digitalWrite(ADC_CS,LOW);
+
+	SmallFS.begin();
+	windowfile=SmallFS.open("WINDOW");
+
+	if (!windowfile.valid()) {
+		while (1) {
+			Serial.println("Cannot open window file");
+			delay(1000);
+		}
+	}
+    resetwindowfile();
+
 	//USPIDATA16 = 0;
 	USPIDATA = 0;
     USPIDATA = 0;
@@ -199,6 +240,7 @@ void loop()
 		myfft.in_im[i] = FFT_64::fixed(0);
 	}
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
+    resetwindowfile();
 	samp_done=0;
 
 	/* Do a FFT on the signal */
