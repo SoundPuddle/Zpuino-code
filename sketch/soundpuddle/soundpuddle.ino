@@ -194,6 +194,10 @@ void setup()
 	digitalWrite(ADC_CS,LOW);
 
 	SmallFS.begin();
+
+	Serial.begin(115200);
+	Serial.println("Starting");
+
 	windowfile=SmallFS.open("WINDOW");
 
 	if (!windowfile.valid()) {
@@ -217,8 +221,6 @@ void setup()
 	INTRMASK = _BV(INTRLINE_TIMER0); // Enable Timer0 interrupt
 	INTRCTL=1;  /* Enable interrupts */
 
-	Serial.begin(115200);
-	Serial.println("Starting");
 	init_rgb();
 }
 
