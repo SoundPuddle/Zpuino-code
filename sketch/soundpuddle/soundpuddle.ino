@@ -116,11 +116,13 @@ void _zpu_interrupt()
 		
 		// Multiply by window
 		winv.v = SPIDATA32;
+		sampbuf[sampbufptr] = winv.v;
 		// Advance file
 		SPIDATA32=0;
 		fv *= winv;
 
-		sampbuf[sampbufptr] = fv.v;
+		//		sampbuf[sampbufptr] = fv.v;
+
 
 		/*                                    <<5    signextend
 		 000 (0) -> -1            -2048 800h  10000h
@@ -246,15 +248,16 @@ void loop()
 	samp_done=0;
 
 	/* Do a FFT on the signal */
-//#if 0
+#if 0
 	myfft.doFFT();
-//#endif
+#endif
 	/* Do complex sqrt */
 
 	Serial.print("Start run ");
 	Serial.println(run);
 	for (i=0;i<32;i++) {
 		FFT_64::fixed v = myfft.in_real[i];
+#if 0
 		v.v>>=2;
 		v *= v;
 		FFT_64::fixed u = myfft.in_im[i];
@@ -264,7 +267,7 @@ void loop()
 		// Set V directly, after fsqrt
         v += u;
 		v.v = fsqrt16(v.asNative());
-
+#endif
 		printhex(v.v);
 		myfft.in_real[i] = v;
 
