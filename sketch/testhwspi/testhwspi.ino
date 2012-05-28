@@ -23,8 +23,14 @@ void setup()
 }
 void loop()
 {
-	Serial.println("Streaming...");
+	unsigned start,end;
+	//Serial.println("Streaming...");
 	REGISTER(HWMULTISPIBASE,0)=1;
-	delay(1000);
+	start=TIMERTSC;
+	while (REGISTER(HWMULTISPIBASE,0)!=0);
+	end=TIMERTSC;
+	//Serial.print("Delta: ");
+	//Serial.println(end-start);
+	//delay(1000);
 }
 
