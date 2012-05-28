@@ -8,7 +8,7 @@ void setup()
 {
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
-	REGISTER(HWMULTISPIBASE,3)= 1577; // One more than number of leds
+	REGISTER(HWMULTISPIBASE,3)= (1576*2)+1; // One more than number of leds times 2
 
 	// Fill in the output array
 
@@ -16,7 +16,7 @@ void setup()
 	int i;
 
 	for (i=1;i<512;i++) {
-		outputarray[i] = 0xff00ff;
+		outputarray[i] = 0xff80ff;
 	}
 
 	Serial.begin(115200);
