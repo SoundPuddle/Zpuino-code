@@ -16,7 +16,7 @@ void setup()
 	int i;
 
 	for (i=1;i<512;i++) {
-		outputarray[i] = 0xff80ff;
+		outputarray[i] = 0xff80ffff;
 	}
 
 	Serial.begin(115200);
