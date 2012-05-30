@@ -174,6 +174,10 @@ void loop()
 {
 	//test_stripes();
 	//test_dummy();
+	force_flush_all();
+	force_flush_all();
+	force_flush_all();
+
     test_dummy_fft();
 
 
