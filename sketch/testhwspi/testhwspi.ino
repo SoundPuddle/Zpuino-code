@@ -112,12 +112,12 @@ void test_dummy()
 	 */
 	REGISTER(HWMULTISPIBASE,4)= (unsigned)0x1c; // No prescaler - simulation
 
-	outputarray[0] = 0xff80ff00;
-	outputarray[1] = 0x8080ff00;
-	outputarray[2] = 0xffffff00;
-	outputarray[3] = 0xffff8000;
-	outputarray[4] = 0xff808000;
-	outputarray[5] = 0x00000000;
+	outputarray[1] = 0xff80ff00;   // G+B
+	outputarray[2] = 0x8080ff00;   // B
+	outputarray[3] = 0xffffff00;   // W
+	outputarray[4] = 0xffff8000;   // Y
+	outputarray[5] = 0xff808000;   // G
+	outputarray[6] = 0x00000000;   // Flush
 
 	REGISTER(HWMULTISPIBASE,0)=1;
 	controller_wait_ready();
