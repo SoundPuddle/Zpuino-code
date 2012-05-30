@@ -103,7 +103,7 @@ void test_stripes()
 
 void test_dummy()
 {
-	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,1)= OFFSET_DIRECTMAP; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= 5;
 	/*
@@ -145,8 +145,8 @@ void setup()
 }
 void loop()
 {
-	test_stripes();
-	//test_dummy();
+	//test_stripes();
+	test_dummy();
 
 
                    /*
