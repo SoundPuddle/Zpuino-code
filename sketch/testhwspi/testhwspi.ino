@@ -101,9 +101,27 @@ void test_stripes()
 	}
 }
 
+void test_dummy()
+{
+	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
+	REGISTER(HWMULTISPIBASE,3)= 5;
+//	REGISTER(HWMULTISPIBASE,4)= 0; // No prescaler - simulation
+
+	outputarray[0] = 0xff80ff00;
+	outputarray[1] = 0x8080ff00;
+	outputarray[2] = 0xffffff00;
+	outputarray[3] = 0xffff8000;
+	outputarray[4] = 0xff808000;
+	outputarray[5] = 0x00000000;
+
+	REGISTER(HWMULTISPIBASE,0)=1;
+	controller_wait_ready();
+}
 
 void setup()
 {
+#if 0
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= (1576*2)+1; // One more than number of leds times 2
@@ -117,12 +135,15 @@ void setup()
 		//outputarray[i] = 0x80808000 + ((i>>2)<<16);
 		outputarray[i] = (i & 1) ? 0x80FF8000 : 0x80808000;
 	}
-
+#endif
 	Serial.begin(115200);
 }
 void loop()
 {
-	test_stripes();
+	// test_stripes();
+	test_dummy();
+
+
                    /*
 	unsigned start,end;
 	//Serial.println("Streaming...");
