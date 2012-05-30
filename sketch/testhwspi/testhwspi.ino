@@ -1,7 +1,7 @@
 
 #define HWMULTISPIBASE IO_SLOT(14)
 
-unsigned int outputarray[512];
+unsigned int outputarray[512*4];
 
 
 /* These values come from the mapper generator
@@ -56,7 +56,7 @@ void set_memory_array()
 void clear_memory_array()
 {
 	int i;
-	for (i=1;i<512;i++) {
+	for (i=1;i<512*4;i++) {
 		outputarray[i] = 0x80808000;
 	}
 }
