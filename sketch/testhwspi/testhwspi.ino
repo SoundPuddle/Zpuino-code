@@ -4,6 +4,104 @@
 unsigned int outputarray[512];
 
 
+/* These values come from the mapper generator
+ */
+#define OFFSET_DIRECTMAP 4692
+
+struct ctrloffsets {
+	unsigned offset;
+	unsigned size;
+};
+
+struct ctrloffsets offs[] = {
+	{ 4692, 163 },
+	{ 5181, 163 },
+	{ 6159, 163 },
+	{ 6648, 163 },
+	{ 7137, 163 },
+	{ 7626, 163 },
+	{ 8505, 293 },
+	{ 9384, 293 }
+};
+
+#define OFFSET_FLUSH 9384
+#define SIZE_FLUSH 28 /* in words */
+
+
+void controller_wait_ready()
+{
+	while (REGISTER(HWMULTISPIBASE,0)!=0);
+}
+
+void controller_start()
+{
+	REGISTER(HWMULTISPIBASE,0)=1;
+}
+
+void force_flush_all()
+{
+	controller_wait_ready();
+	REGISTER(HWMULTISPIBASE,1) = OFFSET_FLUSH; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,3) = SIZE_FLUSH;
+	controller_start();
+}
+
+void clear_memory_array()
+{
+	int i;
+	for (i=1;i<512;i++) {
+		outputarray[i] = 0x80808000;
+	}
+}
+
+void set_single_led_on_stripe(int index, unsigned pat)
+{
+	clear_memory_array();
+	outputarray[index] = pat;
+	controller_start();
+	controller_wait_ready();
+}
+
+void move_leds_on_stripe(int ledssize, unsigned pat)
+{
+	int i;
+	for (i=0;i<ledssize;i++) {
+		set_single_led_on_stripe(i,pat);
+		delay(100);
+	}
+	for (i=0;i<ledssize;i++) {
+		set_single_led_on_stripe((ledssize-i)-1,pat);
+		delay(100);
+	}
+}
+
+void test_single_stripe(int num, int ledssize)
+{
+	int i;
+	
+	controller_wait_ready();
+	REGISTER(HWMULTISPIBASE,1)= offs[num].offset ; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
+	REGISTER(HWMULTISPIBASE,3)= offs[num].size-1 ;
+	for (i=0;i<4;i++) {
+		move_leds_on_stripe(ledssize,0x80FF8000);
+		move_leds_on_stripe(ledssize,0xFF808000);
+		move_leds_on_stripe(ledssize,0x8080FF00);
+	}
+}
+
+void test_stripes()
+{
+	int i;
+	for (i=0;i<6;i++) {
+		test_single_stripe(i,160);
+	}
+	for (i=6;i<8;i++) {
+		test_single_stripe(i,288);
+	}
+}
+
+
 void setup()
 {
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
@@ -16,13 +114,16 @@ void setup()
 	int i;
 
 	for (i=1;i<512;i++) {
-		outputarray[i] = 0xff80ffff;
+		//outputarray[i] = 0x80808000 + ((i>>2)<<16);
+		outputarray[i] = (i & 1) ? 0x80FF8000 : 0x80808000;
 	}
 
 	Serial.begin(115200);
 }
 void loop()
 {
+	test_stripes();
+                   /*
 	unsigned start,end;
 	//Serial.println("Streaming...");
 	REGISTER(HWMULTISPIBASE,0)=1;
@@ -31,6 +132,6 @@ void loop()
 	end=TIMERTSC;
 	//Serial.print("Delta: ");
 	//Serial.println(end-start);
-	//delay(1000);
+	//delay(1000);   */
 }
 
