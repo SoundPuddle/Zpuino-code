@@ -161,12 +161,15 @@ void hello_world()
 	REGISTER(HWMULTISPIBASE,1)= OFFSET_DIRECTMAP;
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
-	REGISTER(HWMULTISPIBASE,3)= 1;
+	REGISTER(HWMULTISPIBASE,3)= 4;
 
 	outputarray[0] = 0xff80ff00;
 
 	outputarray[1] = 0xff80ff00;
-	outputarray[2] = 0;
+	outputarray[2] = 0x80ff8000;
+	outputarray[3] = 0;
+	outputarray[4] = 0;
+	outputarray[5] = 0;
 
 	REGISTER(HWMULTISPIBASE,0)=1;
 	delay(500);
@@ -174,7 +177,10 @@ void hello_world()
 	outputarray[0] = 0x80808000;
 
 	outputarray[1] = 0x80808000;
-	outputarray[2] = 0;
+	outputarray[2] = 0x8080ff00;
+	outputarray[3] = 0;
+	outputarray[4] = 0;
+	outputarray[5] = 0;
 
 	REGISTER(HWMULTISPIBASE,0)=1;
 	delay(500);
