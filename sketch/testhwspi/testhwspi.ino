@@ -207,17 +207,22 @@ void test_dummy_fft()
 	for (i=1;i<512;i++) {
 		outputarray[i] = 0x80808000;
 	}
+	outputarray[1] = 0x808F0000;
 
 	controller_wait_ready();
 
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= 1172; // One more than number of leds times 2
-	REGISTER(HWMULTISPIBASE,0) = 1;
 
-	controller_wait_ready();
-    force_flush_all();
+	for (i=2;i<512;i++) {
 
+		controller_wait_ready();
+		outputarray[i-1]=0x80808000;
+		outputarray[i]=0x808F0000;
+		REGISTER(HWMULTISPIBASE,0) = 1;
+		delay(100);
+	}
 }
 
 void loop()
