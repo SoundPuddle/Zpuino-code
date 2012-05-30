@@ -161,19 +161,23 @@ void hello_world()
 	REGISTER(HWMULTISPIBASE,1)= OFFSET_DIRECTMAP;
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
-	REGISTER(HWMULTISPIBASE,3)= 1;
+	REGISTER(HWMULTISPIBASE,3)= 2;
 
-	outputarray[0] = 0x80ff8000;
-	outputarray[1] = 0;
-
-	REGISTER(HWMULTISPIBASE,0)=1;
-	delay(500);
-    outputarray[0] = 0x80808000;
-	//outputarray[1] = 0;
+    outputarray[0] = 0xff00ff00;
+	outputarray[1] = 0xff00ff00;
+	outputarray[2] = 0;
 
 	REGISTER(HWMULTISPIBASE,0)=1;
 	delay(500);
-    controller_wait_ready();
+
+	outputarray[0] = 0x80808000;
+    outputarray[1] = 0x80808000;
+	outputarray[2] = 0;
+
+	REGISTER(HWMULTISPIBASE,0)=1;
+	delay(500);
+
+	controller_wait_ready();
 
 }
 
