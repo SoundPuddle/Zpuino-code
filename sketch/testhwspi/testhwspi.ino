@@ -162,12 +162,20 @@ void test_dummy_fft()
 	for (i=1;i<512;i++) {
 		outputarray[i] = 0x80808000;
 	}
-
+	/*
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= 1172; // One more than number of leds times 2
 
 	REGISTER(HWMULTISPIBASE,0) =1;
+	*/
+
+	for (i=0;i<8;i++) {
+		REGISTER(HWMULTISPIBASE,1)= offs[i].offset; // SPI flash offset
+		REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
+		REGISTER(HWMULTISPIBASE,3)= offs[i].size; // One more than number of leds times 2
+		REGISTER(HWMULTISPIBASE,0)=1;
+	}
 }
 
 void loop()
