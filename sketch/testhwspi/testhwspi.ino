@@ -71,11 +71,11 @@ void move_leds_on_stripe(int ledssize, unsigned pat)
 	int i;
 	for (i=0;i<ledssize;i++) {
 		set_single_led_on_stripe(i,ledssize,pat);
-		delay(10);
+	   // delay(10);
 	}
 	for (i=0;i<ledssize;i++) {
 		set_single_led_on_stripe((ledssize-i)-1,ledssize,pat);
-		delay(10);
+		// delay(10);
 	}
 }
 
@@ -130,7 +130,7 @@ void test_dummy()
 	delay(5);
 	*/
 
-	REGISTER(HWMULTISPIBASE,4)= (unsigned)0x1c;
+	//REGISTER(HWMULTISPIBASE,4)= (unsigned)0x1c;
 	test_single_stripe(0,80);
 	test_single_stripe(1,80);
 	test_single_stripe(2,80);
