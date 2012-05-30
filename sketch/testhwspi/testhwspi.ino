@@ -163,15 +163,17 @@ void hello_world()
 
 	REGISTER(HWMULTISPIBASE,3)= 1;
 
-    outputarray[0] = 0xff00ff00;
-	outputarray[1] = 0xff00ff00;
+	outputarray[0] = 0xff80ff00;
+
+	outputarray[1] = 0xff80ff00;
 	outputarray[2] = 0;
 
 	REGISTER(HWMULTISPIBASE,0)=1;
 	delay(500);
 
 	outputarray[0] = 0x80808000;
-    outputarray[1] = 0x80808000;
+
+	outputarray[1] = 0x80808000;
 	outputarray[2] = 0;
 
 	REGISTER(HWMULTISPIBASE,0)=1;
