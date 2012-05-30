@@ -215,16 +215,40 @@ void test_dummy_fft()
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= 1172; // One more than number of leds times 2
 
-	for (i=2;i<512;i++) {
+	controller_start();
+	i=2;
 
-		controller_wait_ready();
-		outputarray[i-1]=0x80808000;
-		outputarray[i]=0x808F8000;
+	do {
+		if (Serial.available()) {
+			int r = Serial.read();
+			if (r=='+') {
+				if (i<512) {
+					Serial.print("PLUS: setting offset ");
+					Serial.print(++i);
+					Serial.println("to full RED");
+					outputarray[i] = 0x80ff8000;
+					controller_wait_ready();
+					controller_start();
+				}
+			}
+			if (r=='-') {
+				if (i>2) {
+					Serial.print("MINUS: setting offset ");
+					Serial.print(--i);
+					Serial.println("to full RED");
+					outputarray[i] = 0x80ff8000;
+					i--;
+					controller_wait_ready();
+					controller_start();
+				}
+			}
 
-		REGISTER(HWMULTISPIBASE,0) = 1;
+		} else {
 
-		//delay(100);
-	}
+			controller_wait_ready();
+			controller_start();
+		}
+	} while (1);
 }
 
 void loop()
