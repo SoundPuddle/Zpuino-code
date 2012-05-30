@@ -154,6 +154,29 @@ void setup()
 	Serial.begin(115200);
 }
 
+void hello_world()
+{
+	controller_wait_ready();
+
+	REGISTER(HWMULTISPIBASE,1)= OFFSET_DIRECTMAP;
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
+
+	REGISTER(HWMULTISPIBASE,3)= 1;
+
+	outputarray[0] = 0x80ff8000;
+	outputarray[1] = 0;
+
+	REGISTER(HWMULTISPIBASE,0)=1;
+	delay(500);
+    outputarray[0] = 0x80808000;
+	//outputarray[1] = 0;
+
+	REGISTER(HWMULTISPIBASE,0)=1;
+	delay(500);
+    controller_wait_ready();
+
+}
+
 void test_dummy_fft()
 {
 	outputarray[0] = 0;
@@ -182,13 +205,9 @@ void loop()
 {
 	//test_stripes();
 	//test_dummy();
-	force_flush_all();
-	force_flush_all();
-	force_flush_all();
+    //test_dummy_fft();
 
-    test_dummy_fft();
-
-
+    hello_world();
                    /*
 	unsigned start,end;
 	//Serial.println("Streaming...");
