@@ -54,10 +54,14 @@ void clear_memory_array()
 	}
 }
 
-void set_single_led_on_stripe(int index, unsigned pat)
+void set_single_led_on_stripe(int index, int ledssize, unsigned pat)
 {
 	clear_memory_array();
 	outputarray[index] = pat;
+	int i;
+	for (i=ledssize;i<512;i++) {
+		outputarray[i]=0;
+	}
 	controller_start();
 	controller_wait_ready();
 }
@@ -66,11 +70,11 @@ void move_leds_on_stripe(int ledssize, unsigned pat)
 {
 	int i;
 	for (i=0;i<ledssize;i++) {
-		set_single_led_on_stripe(i,pat);
+		set_single_led_on_stripe(i,ledssize,pat);
 		delay(100);
 	}
 	for (i=0;i<ledssize;i++) {
-		set_single_led_on_stripe((ledssize-i)-1,pat);
+		set_single_led_on_stripe((ledssize-i)-1,ledssize,pat);
 		delay(100);
 	}
 }
@@ -83,6 +87,7 @@ void test_single_stripe(int num, int ledssize)
 	REGISTER(HWMULTISPIBASE,1)= offs[num].offset ; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= offs[num].size-1 ;
+
 	for (i=0;i<4;i++) {
 		move_leds_on_stripe(ledssize,0x80FF8000);
 		move_leds_on_stripe(ledssize,0xFF808000);
