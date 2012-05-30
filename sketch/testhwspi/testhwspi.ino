@@ -141,10 +141,6 @@ void test_dummy()
 void setup()
 {
 
-	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
-	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
-	REGISTER(HWMULTISPIBASE,3)= (1576*2)+1; // One more than number of leds times 2
-
 	// Fill in the output array
 
 	outputarray[0] = 0; // First value is zero, so we can flush the strips easily
@@ -157,10 +153,28 @@ void setup()
 
 	Serial.begin(115200);
 }
+
+void test_dummy_fft()
+{
+	outputarray[0] = 0;
+	int i;
+
+	for (i=1;i<512;i++) {
+		outputarray[i] = 0x80808000;
+	}
+
+	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
+	REGISTER(HWMULTISPIBASE,3)= 1172; // One more than number of leds times 2
+
+	REGISTER(HWMULTISPIBASE,0) =1;
+}
+
 void loop()
 {
 	//test_stripes();
-	test_dummy();
+	//test_dummy();
+    test_dummy_fft();
 
 
                    /*
