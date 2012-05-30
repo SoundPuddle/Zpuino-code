@@ -108,6 +108,7 @@ void test_stripes()
 
 void test_dummy()
 {
+
 	REGISTER(HWMULTISPIBASE,1)= offs[1].offset; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 	REGISTER(HWMULTISPIBASE,3)= 5;
@@ -115,8 +116,8 @@ void test_dummy()
 	 w.lpres := wb_dat_i(4 downto 2);
 	 w.fpres := wb_dat_i(7 downto 5);
 	 */
-	REGISTER(HWMULTISPIBASE,4)= (unsigned)0x1c; // No prescaler - simulation
-
+	//REGISTER(HWMULTISPIBASE,4)= (unsigned)0x1c; // No prescaler - simulation
+    /*
 	outputarray[1] = 0xff80ff00;   // G+B
 	outputarray[2] = 0x8080ff00;   // B
 	outputarray[3] = 0xffffff00;   // W
@@ -127,8 +128,11 @@ void test_dummy()
 	REGISTER(HWMULTISPIBASE,0)=1;
 	controller_wait_ready();
 	delay(5);
-
+	*/
 	test_single_stripe(0,80);
+	test_single_stripe(1,80);
+	test_single_stripe(2,80);
+    test_single_stripe(3,80);
 
 }
 
