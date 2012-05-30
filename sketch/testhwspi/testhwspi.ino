@@ -46,6 +46,13 @@ void force_flush_all()
 	controller_start();
 }
 
+void set_memory_array()
+{
+	int i;
+	for (i=1;i<512;i++) {
+		outputarray[i] = 0x808F8F00;
+	}
+}
 void clear_memory_array()
 {
 	int i;
@@ -253,6 +260,22 @@ void test_dummy_fft()
 
 void loop()
 {
+    
+
+	do {
+		Serial.println("Press SPACE to start");
+		if (Serial.available()) {
+			if (Serial.read() & 0xff==' ') {
+				break;
+			}
+		}
+
+		delay(1000);
+    	set_memory_array();
+		controller_wait_ready();
+		controller_start();
+	}  while (1);
+
 	//test_stripes();
 	//test_dummy();
 	test_dummy_fft();
