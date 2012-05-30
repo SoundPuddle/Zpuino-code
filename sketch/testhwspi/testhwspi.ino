@@ -71,11 +71,11 @@ void move_leds_on_stripe(int ledssize, unsigned pat)
 	int i;
 	for (i=0;i<ledssize;i++) {
 		set_single_led_on_stripe(i,ledssize,pat);
-		delay(100);
+		delay(10);
 	}
 	for (i=0;i<ledssize;i++) {
 		set_single_led_on_stripe((ledssize-i)-1,ledssize,pat);
-		delay(100);
+		delay(10);
 	}
 }
 
