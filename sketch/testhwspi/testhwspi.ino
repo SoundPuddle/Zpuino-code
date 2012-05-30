@@ -122,6 +122,9 @@ void test_dummy()
 	REGISTER(HWMULTISPIBASE,0)=1;
 	controller_wait_ready();
 	delay(5);
+
+	test_single_stripe(0,80);
+
 }
 
 void setup()
