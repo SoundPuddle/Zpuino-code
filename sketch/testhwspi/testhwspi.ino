@@ -226,7 +226,7 @@ void loop()
 	//test_dummy();
 	test_dummy_fft();
 
-    hello_world();
+    //hello_world();
                    /*
 	unsigned start,end;
 	//Serial.println("Streaming...");
