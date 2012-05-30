@@ -219,8 +219,11 @@ void test_dummy_fft()
 
 		controller_wait_ready();
 		outputarray[i-1]=0x80808000;
-		outputarray[i]=0x808F0000;
+
+		outputarray[i]=0x808F8000;
+
 		REGISTER(HWMULTISPIBASE,0) = 1;
+
 		delay(100);
 	}
 }
