@@ -161,7 +161,7 @@ void hello_world()
 	REGISTER(HWMULTISPIBASE,1)= OFFSET_DIRECTMAP;
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
-	REGISTER(HWMULTISPIBASE,3)= 2;
+	REGISTER(HWMULTISPIBASE,3)= 1;
 
     outputarray[0] = 0xff00ff00;
 	outputarray[1] = 0xff00ff00;
