@@ -329,9 +329,9 @@ void loop()
 
 		unsigned rgbval = hsvtable[val & 0xff];
 
-		myfft.in_real[i].v = rgbval;
+		//myfft.in_real[i].v = rgbval;
 
-		outbuffer[i] = 0x808f8000;
+		outbuffer[i] = rgbval;//0x808f8000;
 
 		Serial.println();
 	}
@@ -344,7 +344,8 @@ void loop()
 	controller_wait_ready();
     outbuffer[0] = 0;
     controller_start();
-    run++;
+	controller_wait_ready();
+	run++;
 }
 
 
