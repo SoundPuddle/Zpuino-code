@@ -1,0 +1,3 @@
+bitmerge -o out.bit out.bin:bin@0x0
+
+Then copy out.bit to your preferred location
