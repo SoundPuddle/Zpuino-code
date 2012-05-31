@@ -220,12 +220,16 @@ void test_dummy_fft()
 
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
-	REGISTER(HWMULTISPIBASE,3)= 1172; // One more than number of leds times 2
+
+    //Writing direct mapping at 4692  - we use this /3
+	REGISTER(HWMULTISPIBASE,3)= 1564;
+	//REGISTER(HWMULTISPIBASE,4)= 0;
 
 	controller_start();
 	i=2;
 
 	do {
+
 		if (Serial.available()) {
 			int r = Serial.read();
 			if (r=='+') {
@@ -234,6 +238,7 @@ void test_dummy_fft()
 					Serial.print(++i);
 					Serial.println("to full RED");
 					outputarray[i] = 0x80ff8000;
+					outputarray[i-1] = 0x80808000;
 					controller_wait_ready();
 					controller_start();
 				}
@@ -241,8 +246,9 @@ void test_dummy_fft()
 			if (r=='-') {
 				if (i>2) {
 					Serial.print("MINUS: setting offset ");
-					Serial.print(--i);
+					Serial.print(i);
 					Serial.println("to full RED");
+					outputarray[i--] = 0x80808000;
 					outputarray[i] = 0x80ff8000;
 					i--;
 					controller_wait_ready();
@@ -261,7 +267,7 @@ void test_dummy_fft()
 void loop()
 {
     
-
+    /*
 	do {
 		Serial.println("Press SPACE to start");
 		if (Serial.available()) {
@@ -275,7 +281,7 @@ void loop()
 		controller_wait_ready();
 		controller_start();
 	}  while (1);
-
+    */
 	//test_stripes();
 	//test_dummy();
 	test_dummy_fft();

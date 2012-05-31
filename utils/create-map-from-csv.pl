@@ -12,7 +12,7 @@ while (<STDIN>) {
     for (my $i=0;$i<8;$i++) {
         my $val = shift @values;
         next unless $val=~/[0-9]+/;
-        push(@{$controllers[$i]},$val);
+        push(@{$controllers[$i]},$val+1); # Need to add offset
         $min=$val if $val<$min;
         $max=$val if $val>$max;
     }
@@ -39,7 +39,7 @@ for (my $i=0;$i<8;$i++) {
     
     $cnt+=63;
     $cnt = int(($cnt/64));
-    
+    print STDERR "Flush for channel $i: $cnt\n";
     while ($cnt) {
         push(@{$controllers[$i]},0);
         $cnt--;
@@ -57,6 +57,7 @@ for(;;) {
             $found=1;
             my $offset = $v*4;
             print $out pack("Cn",$i,$offset);
+            printf "CH $i 0x%08x\n", $offset;
         }
     }
     last unless $found;
