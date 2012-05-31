@@ -333,7 +333,7 @@ void loop()
 
 		outbuffer[i] = rgbval;//0x808f8000;
 
-		Serial.println();
+	   // Serial.println();
 	}
 	//Serial.print("End run ");
 	//Serial.println(run);
