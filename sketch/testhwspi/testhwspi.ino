@@ -1,7 +1,7 @@
 
 #define HWMULTISPIBASE IO_SLOT(14)
 
-unsigned int outputarray[512*4];
+unsigned int outputarray[512];
 
 
 /* These values come from the mapper generator
@@ -214,7 +214,7 @@ void test_dummy_fft()
 	for (i=1;i<512;i++) {
 		outputarray[i] = 0x80808000;
 	}
-	outputarray[1] = 0x808F8000;
+	//outputarray[1] = 0x808F8000;
 
 	controller_wait_ready();
 
@@ -225,6 +225,23 @@ void test_dummy_fft()
 	REGISTER(HWMULTISPIBASE,3)= 1563;
 	//REGISTER(HWMULTISPIBASE,4)= 0;
 
+	while (1) {
+		for (i=1;i<512;i++) {
+			outputarray[i] = 0x808F8000;
+			controller_start();
+			controller_wait_ready();
+			delay(5);
+			outputarray[i] = 0x80888000;
+		}
+		for (i=512;i>1;i--) {
+			outputarray[i] = 0x808F8000;
+			controller_start();
+			controller_wait_ready();
+			delay(5);
+			outputarray[i] = 0x80888000;
+		}
+	}
+#if 0
 	controller_start();
 	i=2;
 
@@ -262,6 +279,7 @@ void test_dummy_fft()
 			controller_start();
 		}
 	} while (1);
+#endif
 }
 
 void loop()
