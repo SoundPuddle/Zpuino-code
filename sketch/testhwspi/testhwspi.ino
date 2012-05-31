@@ -233,7 +233,7 @@ void test_dummy_fft()
 			delay(5);
 			outputarray[i] = 0x80888000;
 		}
-		for (i=512;i>1;i--) {
+		for (i=511;i>1;i--) {
 			outputarray[i] = 0x808F8000;
 			controller_start();
 			controller_wait_ready();
