@@ -243,6 +243,11 @@ void setup()
 	USPIDATA = 0;
     USPIDATA = 0;
 
+	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&myfft.in_real[0].v; // base memory address
+    // Writing direct mapping at 4692  - we use this /3 minus one
+	REGISTER(HWMULTISPIBASE,3)= 1563;
+
 	/* Set up timer for a SAMPLING_FREQ frequency */
 
 	TMR0CTL = 0;
@@ -255,10 +260,6 @@ void setup()
 	init_rgb();
 #endif
 
-	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
-	REGISTER(HWMULTISPIBASE,2)= (unsigned)&myfft.in_real[0].v; // base memory address
-    // Writing direct mapping at 4692  - we use this /3 minus one
-	REGISTER(HWMULTISPIBASE,3)= 1563;
 }
 
 
@@ -325,7 +326,7 @@ void loop()
 
 		unsigned rgbval = hsvtable[val & 0xff];
 
-		myfft.in_real[i].v = rgbval;
+		myfft.in_real[i].v = 0x808f8000;//rgbval;
 
 		Serial.println();
 	}
