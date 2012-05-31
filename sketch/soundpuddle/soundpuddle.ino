@@ -297,8 +297,8 @@ void loop()
 
 	/* Do complex sqrt */
 
-	Serial.print("Start run ");
-	Serial.println(run);
+//	Serial.print("Start run ");
+//	Serial.println(run);
 
 	myfft.in_real[0].v = 0; // we don't use DC, but use this for RGB flushing
 
@@ -318,7 +318,7 @@ void loop()
         v += u;
 		v.v = fsqrt16(v.asNative());
 //#endif
-		printhex(v.v);
+	  //  printhex(v.v);
 
 		// Convert to HSV
 
@@ -335,8 +335,8 @@ void loop()
 
 		Serial.println();
 	}
-	Serial.print("End run ");
-	Serial.println(run);
+	//Serial.print("End run ");
+	//Serial.println(run);
 
 #if 0
 	show_rgb_fft();
