@@ -221,8 +221,8 @@ void test_dummy_fft()
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
-    //Writing direct mapping at 4692  - we use this /3
-	REGISTER(HWMULTISPIBASE,3)= 1564;
+    //Writing direct mapping at 4692  - we use this /3 minus one
+	REGISTER(HWMULTISPIBASE,3)= 1563;
 	//REGISTER(HWMULTISPIBASE,4)= 0;
 
 	controller_start();
