@@ -1,13 +1,13 @@
 #include "FFT.h"
 #include <SmallFS.h>
 
-#define SAMPLING_FREQ 44100
-#define SAMPLE_BUFFER_SIZE 64
+#define SAMPLING_FREQ 22050
 
 #define ADC_MOSI WING_C_7
 #define ADC_MISO WING_C_6
 #define ADC_SCK  WING_C_5
 #define ADC_CS  WING_C_4
+
 
 // Helper for 16-bit SPI transfer
 #define USPIDATA16 *((&USPIDATA)+2)
@@ -18,18 +18,31 @@
 #define SPIDATA24 *((&SPIDATA)+4)
 #define SPIDATA32 *((&SPIDATA)+6)
 
-static int sampbuf[SAMPLE_BUFFER_SIZE];
-volatile unsigned int sampbufptr;
-volatile int samp_done;
-FFT_64 myfft;
-extern "C" unsigned int hsvtable[256];
 
-extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
+#define FFT_POINTS 1024
+#define SAMPLE_BUFFER_SIZE FFT_POINTS
+
+// Used only without dedicated HW
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
+typedef FFT_1024 FFT_type;
+
+static FFT_type myfft;
+static int sampbuf[SAMPLE_BUFFER_SIZE];
+volatile unsigned int sampbufptr;
+volatile int samp_done;
+SmallFSFile windowfile;
+
+extern "C" unsigned int hsvtable[256];
+extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
+
+// HW acceleration base address
+#define HWMULTISPIBASE IO_SLOT(14)
+
+#if 0
 
 #define SPI3BASE  IO_SLOT(8)
 #define SPI3CTL  REGISTER(SPI3BASE,0)
@@ -37,7 +50,6 @@ extern void printhex(unsigned int c);
 
 #define NUMRGBLEDS 32
 
-SmallFSFile windowfile;
 
 void init_rgb()
 {
@@ -103,14 +115,16 @@ void rgb_latch(unsigned n)
 		SPI3DATA=0;
 }
 
+#endif
+
 /* End debugging */
 
 void _zpu_interrupt()
 {
 	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
 
-		FFT_64::fixed fv;
-        FFT_64::fixed winv;
+		FFT_type::fixed fv;
+		FFT_type::fixed winv;
 		fv.v = ((int)(USPIDATA & 0xffff)-2047);
 
 		
@@ -144,10 +158,22 @@ void _zpu_interrupt()
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
 
+
+void controller_wait_ready()
+{
+	while (REGISTER(HWMULTISPIBASE,0)!=0);
+}
+
+void controller_start()
+{
+	REGISTER(HWMULTISPIBASE,0)=1;
+}
+
+
 void dumpdata()
 {
     int i;
-	for (i=0;i<32;i++) {
+	for (i=0;i<FFT_POINTS/2;i++) {
 		Serial.print(myfft.in_real[i].asInt());
 		Serial.print("[");
 		Serial.print(myfft.in_im[i].asInt());
@@ -203,7 +229,7 @@ void setup()
 	Serial.begin(115200);
 	Serial.println("Starting");
 
-	windowfile=SmallFS.open("WINDOW");
+	windowfile=SmallFS.open("W1024");
 
 	if (!windowfile.valid()) {
 		while (1) {
@@ -225,8 +251,14 @@ void setup()
 	TMR0CTL = _BV(TCTLENA)|_BV(TCTLCCM)|_BV(TCTLDIR)| _BV(TCTLIEN);
 	INTRMASK = _BV(INTRLINE_TIMER0); // Enable Timer0 interrupt
 	INTRCTL=1;  /* Enable interrupts */
-
+#if 0
 	init_rgb();
+#endif
+
+	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&myfft.in_real[0].v; // base memory address
+    // Writing direct mapping at 4692  - we use this /3 minus one
+	REGISTER(HWMULTISPIBASE,3)= 1563;
 }
 
 
@@ -242,43 +274,69 @@ void loop()
 	/* Set up FFT */
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
-		/* Note: we have to tune <<8 here, and perform proper signed/unsigned conversion */
-		myfft.in_real[i].v= sampbuf[i];// = FFT_64::fixed((unsigned)sampbuf[i]<<8,0);
-		myfft.in_im[i] = FFT_64::fixed(0);
+		myfft.in_real[i].v= sampbuf[i];
+		myfft.in_im[i] = FFT_type::fixed(0);
 	}
-	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
+
+
+	/* NOTE: this is where we can load the new HSV mapping, if needed */
+
     resetwindowfile();
+
+	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
 
 	/* Do a FFT on the signal */
 //#if 0
 	myfft.doFFT();
 //#endif
+
 	/* Do complex sqrt */
 
 	Serial.print("Start run ");
 	Serial.println(run);
-	for (i=0;i<32;i++) {
-		FFT_64::fixed v = myfft.in_real[i];
+
+	myfft.in_real[0].v = 0; // we don't use DC, but use this for RGB flushing
+
+	for (i=1; i<FFT_POINTS/2; i++) {
+		FFT_type::fixed v = myfft.in_real[i];
 //#if 0
 		v.v>>=2;
 		v *= v;
-		FFT_64::fixed u = myfft.in_im[i];
+		FFT_type::fixed u = myfft.in_im[i];
 		u.v>>=2;
 		u *= u;
 
 		// Set V directly, after fsqrt
+
+		// TODO: use hardware acceleration here, we already have a module
+
         v += u;
 		v.v = fsqrt16(v.asNative());
 //#endif
 		printhex(v.v);
-		myfft.in_real[i] = v;
+
+		// Convert to HSV
+
+		unsigned val = v.v >>8;
+
+		if (val>0xff)
+			val=0xff;
+
+		unsigned rgbval = hsvtable[val & 0xff];
+
+		myfft.in_real[i].v = rgbval;
 
 		Serial.println();
 	}
 	Serial.print("End run ");
 	Serial.println(run);
-    show_rgb_fft();
+
+#if 0
+	show_rgb_fft();
+#endif
+	controller_wait_ready();
+    controller_start();
     run++;
 }
 
