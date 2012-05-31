@@ -38,6 +38,7 @@ SmallFSFile windowfile;
 extern "C" unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
+unsigned outbuffer[512];
 
 // HW acceleration base address
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -195,6 +196,8 @@ void resetwindowfile()
 	SPIDATA24 = 0;
 }
 
+
+
 void setup()
 {
 	sampbufptr=0;
@@ -244,7 +247,7 @@ void setup()
     USPIDATA = 0;
 
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
-	REGISTER(HWMULTISPIBASE,2)= (unsigned)&myfft.in_real[0].v; // base memory address
+	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 4692  - we use this /3 minus one
 	REGISTER(HWMULTISPIBASE,3)= 1563;
 
@@ -326,7 +329,9 @@ void loop()
 
 		unsigned rgbval = hsvtable[val & 0xff];
 
-		myfft.in_real[i].v = 0x808f8000;//rgbval;
+		myfft.in_real[i].v = rgbval;
+
+		outbuffer[i] = 0x808f8000;
 
 		Serial.println();
 	}
@@ -337,6 +342,7 @@ void loop()
 	show_rgb_fft();
 #endif
 	controller_wait_ready();
+    outbuffer[0] = 0;
     controller_start();
     run++;
 }
