@@ -10,7 +10,7 @@ my $numctrl;
 
 while (<STDIN>) {
     chomp;
-    my @values = split(',');
+    my @values = split(/[,\s]/);
     
     $numctrl||=scalar(@values);
     
