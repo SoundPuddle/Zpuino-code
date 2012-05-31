@@ -61,7 +61,7 @@ int main()
 
 	puts("unsigned int hsvtable[256] = {\n");
 	for (i=0;i<256;i++) {
-		HSL( (float)i/256.0, 0.99, 0.25,r,g,b);
+		HSL( (float)i/256.0, 0.99, 0.1,r,g,b);
 		int ur =(int)r;
 		int ug =(int)g;
 		int ub =(int)b;
