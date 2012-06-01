@@ -1,7 +1,7 @@
 #include "FFT.h"
 #include <SmallFS.h>
 
-#define SAMPLING_FREQ 22050
+#define SAMPLING_FREQ 16000
 
 #define ADC_MOSI WING_C_7
 #define ADC_MISO WING_C_6
@@ -249,7 +249,7 @@ void setup()
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 4692  - we use this /3 minus one
-	REGISTER(HWMULTISPIBASE,3)= 1563;
+	REGISTER(HWMULTISPIBASE,3)= 1693;
 
 	/* Set up timer for a SAMPLING_FREQ frequency */
 
