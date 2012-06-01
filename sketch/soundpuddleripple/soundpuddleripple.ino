@@ -38,7 +38,13 @@ SmallFSFile windowfile;
 extern "C" unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
-unsigned outbuffer[512];
+
+#define BUFFERSIZE 16
+#define NUMBUFFERS 104
+
+unsigned outbuffer[1+ (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
+unsigned fftbuffermap[BUFFERSIZE] =
+{ 67, 75, 84, 89, 100, 113, 126, 134, 150, 169, 179, 201, 225, 253, 268, 301 };
 
 // HW acceleration base address
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -197,6 +203,14 @@ void resetwindowfile()
 }
 
 
+static void shift_buffer()
+{
+	int i;
+	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+		outbuffer[i+BUFFERSIZE] = outbuffer[i];
+	}
+}
+
 
 void setup()
 {
@@ -268,7 +282,7 @@ void setup()
 
 void loop()
 {
-	int i;
+	int i,z;
 	static int run=0;
 
 	/* Wait for sample buffer to fill */
@@ -290,6 +304,8 @@ void loop()
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
 
+	controller_wait_ready();
+
 	/* Do a FFT on the signal */
 //#if 0
 	myfft.doFFT();
@@ -300,9 +316,13 @@ void loop()
 //	Serial.print("Start run ");
 //	Serial.println(run);
 
-	myfft.in_real[0].v = 0; // we don't use DC, but use this for RGB flushing
+    shift_buffer();
+	
+	outbuffer[0] = 0;
 
-	for (i=1; i<FFT_POINTS/2; i++) {
+	for (z=0; i<BUFFERSIZE; z++) {
+		i = fftbuffermap[z];
+
 		FFT_type::fixed v = myfft.in_real[i];
 //#if 0
 		v.v>>=2;
@@ -331,7 +351,7 @@ void loop()
 
 		//myfft.in_real[i].v = rgbval;
 
-		outbuffer[i] = rgbval;//0x808f8000;
+		outbuffer[z+1] = rgbval;//0x808f8000;
 
 	   // Serial.println();
 	}
@@ -341,7 +361,6 @@ void loop()
 #if 0
 	show_rgb_fft();
 #endif
-	controller_wait_ready();
     outbuffer[0] = 0;
     controller_start();
 	controller_wait_ready();
