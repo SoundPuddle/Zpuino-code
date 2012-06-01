@@ -222,8 +222,8 @@ void test_dummy_fft()
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
     //Writing direct mapping at 4692  - we use this /3 minus one
-	REGISTER(HWMULTISPIBASE,3)= 1563;
-	//REGISTER(HWMULTISPIBASE,4)= 0;
+	REGISTER(HWMULTISPIBASE,3)= 1693;
+	REGISTER(HWMULTISPIBASE,4)= 0;
 
 	while (1) {
 		for (i=1;i<512;i++) {
