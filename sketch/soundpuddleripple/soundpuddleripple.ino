@@ -331,14 +331,11 @@ void loop()
 		u.v>>=2;
 		u *= u;
 
-		// Set V directly, after fsqrt
-
 		// TODO: use hardware acceleration here, we already have a module
 
         v += u;
 		v.v = fsqrt16(v.asNative());
 //#endif
-	  //  printhex(v.v);
 
 		// Convert to HSV
 
@@ -347,11 +344,7 @@ void loop()
 		if (val>0xff)
 			val=0xff;
 
-		unsigned rgbval = hsvtable[val & 0xff];
-
-		//myfft.in_real[i].v = rgbval;
-
-		outbuffer[z+1] = rgbval;//0x808f8000;
+		outbuffer[z+1] = hsvtable[val & 0xff];
 
 	   // Serial.println();
 	}
