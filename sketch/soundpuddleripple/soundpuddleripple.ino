@@ -262,8 +262,8 @@ void setup()
 
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
-    // Writing direct mapping at 4692  - we use this /3 minus one
-	REGISTER(HWMULTISPIBASE,3)= 1693;
+    // Writing direct mapping at 5076  - we use this /3 minus one
+	REGISTER(HWMULTISPIBASE,3)= 1691;
 
 	/* Set up timer for a SAMPLING_FREQ frequency */
 
