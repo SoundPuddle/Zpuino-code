@@ -320,7 +320,7 @@ void loop()
 	
 	outbuffer[0] = 0;
 
-	for (z=0; i<BUFFERSIZE; z++) {
+	for (z=0; z<BUFFERSIZE; z++) {
 		i = fftbuffermap[z];
 
 		FFT_type::fixed v = myfft.in_real[i];
