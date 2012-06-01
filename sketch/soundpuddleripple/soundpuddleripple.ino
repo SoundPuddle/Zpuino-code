@@ -313,8 +313,8 @@ void loop()
 
 	/* Do complex sqrt */
 
-//	Serial.print("Start run ");
-//	Serial.println(run);
+	Serial.print("Start run ");
+	Serial.println(run);
 
     shift_buffer();
 	
@@ -348,15 +348,15 @@ void loop()
 
 	   // Serial.println();
 	}
-	//Serial.print("End run ");
-	//Serial.println(run);
+	Serial.print("End run ");
+	Serial.println(run);
 
 #if 0
 	show_rgb_fft();
 #endif
     outbuffer[0] = 0;
     controller_start();
-	controller_wait_ready();
+//	controller_wait_ready();
 	run++;
 }
 
