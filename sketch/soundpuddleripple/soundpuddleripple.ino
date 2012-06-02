@@ -159,8 +159,7 @@ void _zpu_interrupt()
 			sampbufptr = 0;
 		}
 	}
-	USPIDATA=0; // Start reading next sample
-	USPIDATA=0; // Start reading next sample
+	USPIDATA16=0; // Start reading next sample
 
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
@@ -290,6 +289,7 @@ void loop()
 	while (samp_done==0) { }
 
 	/* Set up FFT */
+	resetwindowfile();
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		myfft.in_real[i].v= sampbuf[i];
@@ -299,26 +299,26 @@ void loop()
 
 	/* NOTE: this is where we can load the new HSV mapping, if needed */
 
-    resetwindowfile();
+
 
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
-
-	controller_wait_ready();
 
 	/* Do a FFT on the signal */
 //#if 0
 	myfft.doFFT();
 //#endif
 
-	/* Do complex sqrt */
 
+    /*
 	Serial.print("Start run ");
 	Serial.println(run);
+	*/
 
+	controller_wait_ready();
     shift_buffer();
 	
-	outbuffer[0] = 0;
+//	outbuffer[0] = 0;
 
 	for (z=0; z<BUFFERSIZE; z++) {
 		i = fftbuffermap[z];
@@ -348,8 +348,10 @@ void loop()
 
 	   // Serial.println();
 	}
-	Serial.print("End run ");
-	Serial.println(run);
+	/*
+	 Serial.print("End run ");
+	 Serial.println(run);
+     */
 
 #if 0
 	show_rgb_fft();
