@@ -153,8 +153,8 @@ void _zpu_interrupt()
 			sampbufptr = 0;
 		}
 	}
-	USPIDATA=0; // Start reading next sample
-	USPIDATA=0; // Start reading next sample
+	USPIDATA16=0; // Start reading next sample
+	//USPIDATA=0; // Start reading next sample
 
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
@@ -276,6 +276,7 @@ void loop()
 	while (samp_done==0) { }
 
 	/* Set up FFT */
+	resetwindowfile();
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		myfft.in_real[i].v= sampbuf[i];
@@ -285,7 +286,7 @@ void loop()
 
 	/* NOTE: this is where we can load the new HSV mapping, if needed */
 
-    resetwindowfile();
+
 
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
@@ -301,6 +302,8 @@ void loop()
 //	Serial.println(run);
 
 	myfft.in_real[0].v = 0; // we don't use DC, but use this for RGB flushing
+
+	controller_wait_ready();
 
 	for (i=1; i<FFT_POINTS/2; i++) {
 		FFT_type::fixed v = myfft.in_real[i];
@@ -341,10 +344,9 @@ void loop()
 #if 0
 	show_rgb_fft();
 #endif
-	controller_wait_ready();
-    outbuffer[0] = 0;
-    controller_start();
-	controller_wait_ready();
+	outbuffer[0] = 0;
+	controller_start();
+
 	run++;
 }
 
