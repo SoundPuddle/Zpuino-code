@@ -287,24 +287,31 @@ void setup()
 
 }
 
+unsigned timingbuf[16];
+
 
 void loop()
 {
 	int i,z;
 	static int run=0;
+	int timingpos=0;
 
 	/* Wait for sample buffer to fill */
 
 	while (samp_done==0) { }
 
+	timingbuf[timingpos++] = TIMERTSC;
+
 	/* Set up FFT */
 	resetwindowfile();
+	timingbuf[timingpos++] = TIMERTSC;
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		myfft.in_real[i].v= sampbuf[i];
 		myfft.in_im[i] = FFT_type::fixed(0);
 	}
 
+	timingbuf[timingpos++] = TIMERTSC;
 
 	/* NOTE: this is where we can load the new HSV mapping, if needed */
 
@@ -318,15 +325,18 @@ void loop()
 	myfft.doFFT();
 //#endif
 
-
+	timingbuf[timingpos++] = TIMERTSC;
     /*
 	Serial.print("Start run ");
 	Serial.println(run);
 	*/
 
 	controller_wait_ready();
-    shift_buffer();
-	
+	timingbuf[timingpos++] = TIMERTSC;
+
+	shift_buffer();
+
+	timingbuf[timingpos++] = TIMERTSC;
 //	outbuffer[0] = 0;
 
 	for (z=0; z<BUFFERSIZE; z++) {
@@ -357,11 +367,20 @@ void loop()
 
 	   // Serial.println();
 	}
+	timingbuf[timingpos++] = TIMERTSC;
+
 	/*
 	 Serial.print("End run ");
 	 Serial.println(run);
      */
-
+	Serial.print("Times: ");
+	{
+		for (i=1;i<timingpos;i++) {
+			Serial.print(timingbuf[i]-timingbuf[i-1]);
+			Serial.print(" ");
+		}
+	}
+	Serial.println("\n");
 #if 0
 	show_rgb_fft();
 #endif
