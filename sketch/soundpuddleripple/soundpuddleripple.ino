@@ -393,8 +393,10 @@ void loop()
 	run++;
 	{
 		unsigned now = TIMERTSC;
-		Serial.print("Clocks: ");
-		Serial.println(now-oldv);
+		if (run&1) {
+			Serial.print("Clocks: ");
+			Serial.println(now-oldv);
+		}
         oldv=now;
 
 	}
