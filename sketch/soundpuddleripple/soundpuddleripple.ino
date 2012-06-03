@@ -298,10 +298,12 @@ void loop()
 	static unsigned int oldv;
 
 	/* Wait for sample buffer to fill */
+	timingbuf[timingpos++] = TIMERTSC;
 
 	while (samp_done==0) { }
 
-	//timingbuf[timingpos++] = TIMERTSC;
+	timingbuf[timingpos++] = TIMERTSC;
+	
 
 	/* Set up FFT */
 	resetwindowfile();
@@ -375,6 +377,15 @@ void loop()
 	 Serial.println(run);
 	 */
     /*
+    */
+#if 0
+	show_rgb_fft();
+#endif
+    outbuffer[0] = 0;
+	controller_start();
+    timingbuf[timingpos++] = TIMERTSC;
+//	controller_wait_ready();
+	run++;
 	Serial.print("Times: ");
 	{
 		for (i=1;i<timingpos;i++) {
@@ -383,23 +394,6 @@ void loop()
 		}
 	}
 	Serial.println("\n");
-    */
-#if 0
-	show_rgb_fft();
-#endif
-    outbuffer[0] = 0;
-    controller_start();
-//	controller_wait_ready();
-	run++;
-	{
-		unsigned now = TIMERTSC;
-		if (run&1) {
-			Serial.print("Clocks: ");
-			Serial.println(now-oldv);
-		}
-        oldv=now;
-
-	}
 }
 
 
