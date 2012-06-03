@@ -263,6 +263,15 @@ void setup()
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 5076  - we use this /3 minus one
 	REGISTER(HWMULTISPIBASE,3)= 1691;
+	/*
+	 w.lpres := wb_dat_i(4 downto 2);
+	 w.fpres := wb_dat_i(7 downto 5);
+
+	 000 000 00
+	 010 101 00
+
+     */
+    REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 
 	/* Set up timer for a SAMPLING_FREQ frequency */
 
