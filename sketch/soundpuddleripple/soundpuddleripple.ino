@@ -308,7 +308,7 @@ void loop()
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		myfft.in_real[i].v= sampbuf[i];
-		myfft.in_im[i] = FFT_type::fixed(0);
+		myfft.in_im[i].v=0;
 	}
 
 	timingbuf[timingpos++] = TIMERTSC;
