@@ -31,8 +31,13 @@ typedef FFT_1024 FFT_type;
 
 static FFT_type myfft;
 static int sampbuf[SAMPLE_BUFFER_SIZE];
+static int *sampbufbase = &sampbuf[SAMPLE_BUFFER_SIZE/2];
+static int window[SAMPLE_BUFFER_SIZE];
+
 volatile unsigned int sampbufptr;
+
 volatile int samp_done;
+
 SmallFSFile windowfile;
 
 extern "C" unsigned int hsvtable[256];
@@ -142,7 +147,7 @@ void _zpu_interrupt()
 		SPIDATA32=0;
 		fv *= winv;
 
-		sampbuf[sampbufptr] = fv.v;
+		sampbufbase[sampbufptr] = fv.v;
 
 
 		/*                                    <<5    signextend
@@ -154,7 +159,7 @@ void _zpu_interrupt()
 		//USPIDATA16=0; // Start reading next sample
 		sampbufptr++;
 
-		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
+		if (sampbufptr==SAMPLE_BUFFER_SIZE/2) {
 			samp_done = 1;
 			sampbufptr = 0;
 		}
@@ -253,7 +258,9 @@ void setup()
 			delay(1000);
 		}
 	}
-    resetwindowfile();
+	// Read window
+    windowfile.read( &window[0], sizeof(window));
+    //resetwindowfile();
 
 	//USPIDATA16 = 0;
 	USPIDATA = 0;
@@ -306,12 +313,21 @@ void loop()
 	
 
 	/* Set up FFT */
-	resetwindowfile();
+	// resetwindowfile();
 	//timingbuf[timingpos++] = TIMERTSC;
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
-		myfft.in_real[i].v= sampbuf[i];
+		FFT_type::fixed winv;
+		myfft.in_real[i].v = sampbuf[i];
+		winv.v = window[i];
+        myfft.in_real[i] *= winv;
 		myfft.in_im[i].v=0;
+	}
+
+	/* Reorder */
+	i=SAMPLE_BUFFER_SIZE/2;
+	while (i--) {
+        sampbuf[i] = sampbuf[i+(SAMPLE_BUFFER_SIZE/2)];
 	}
 
 	//timingbuf[timingpos++] = TIMERTSC;
@@ -322,6 +338,7 @@ void loop()
 
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
+
 
 	/* Do a FFT on the signal */
 //#if 0
@@ -386,6 +403,7 @@ void loop()
     timingbuf[timingpos++] = TIMERTSC;
 //	controller_wait_ready();
 	run++;
+    /*
 	Serial.print("Times: ");
 	{
 		for (i=1;i<timingpos;i++) {
@@ -394,6 +412,7 @@ void loop()
 		}
 	}
 	Serial.println("\n");
+    */
 }
 
 
