@@ -135,30 +135,8 @@ void _zpu_interrupt()
 {
 	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
 
-		FFT_type::fixed fv;
-		FFT_type::fixed winv;
-		fv.v = ((int)(USPIDATA & 0xffff)-2047);
-
-		
-		// Multiply by window
-		winv.v = SPIDATA32;
-		//sampbuf[sampbufptr] = winv.v;
-		// Advance file
-		SPIDATA32=0;
-		fv *= winv;
-
-		sampbufbase[sampbufptr] = fv.v;
-
-
-		/*                                    <<5    signextend
-		 000 (0) -> -1            -2048 800h  10000h
-		 fff (4095) -> +1          2047 7ffh  0FFE0h
-		 800 (2048) -> Zero        0    0h    00000h
-		 */
-
-		//USPIDATA16=0; // Start reading next sample
+		sampbufbase[sampbufptr] = ((int)(USPIDATA & 0xffff)-2047);
 		sampbufptr++;
-
 		if (sampbufptr==SAMPLE_BUFFER_SIZE/2) {
 			samp_done = 1;
 			sampbufptr = 0;
