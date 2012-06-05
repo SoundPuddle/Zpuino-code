@@ -22,6 +22,7 @@
 
 #define FFT_POINTS 1024
 #define SAMPLE_BUFFER_SIZE FFT_POINTS
+#define ADC_SAMPLES_PER_FFT (SAMPLE_BUFFER_SIZE/4)
 
 // Used only without dedicated HW
 #define RGB_DATAPIN WING_C_15
@@ -30,8 +31,11 @@
 typedef FFT_1024 FFT_type;
 
 static FFT_type myfft;
+
 static int sampbuf[SAMPLE_BUFFER_SIZE];
-static int *sampbufbase = &sampbuf[SAMPLE_BUFFER_SIZE/2];
+
+static int *sampbufbase = &sampbuf[SAMPLE_BUFFER_SIZE - ADC_SAMPLES_PER_FFT];
+
 static int window[SAMPLE_BUFFER_SIZE];
 
 volatile unsigned int sampbufptr;
@@ -137,7 +141,7 @@ void _zpu_interrupt()
 
 		sampbufbase[sampbufptr] = ((int)(USPIDATA & 0xffff)-2047);
 		sampbufptr++;
-		if (sampbufptr==SAMPLE_BUFFER_SIZE/2) {
+		if (sampbufptr==ADC_SAMPLES_PER_FFT) {
 			samp_done = 1;
 			sampbufptr = 0;
 		}
@@ -240,9 +244,7 @@ void setup()
     windowfile.read( &window[0], sizeof(window));
     //resetwindowfile();
 
-	//USPIDATA16 = 0;
-	USPIDATA = 0;
-    USPIDATA = 0;
+	USPIDATA16 = 0;
 
 	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
@@ -303,9 +305,9 @@ void loop()
 	}
 
 	/* Reorder */
-	i=SAMPLE_BUFFER_SIZE/2;
+	i=SAMPLE_BUFFER_SIZE - ADC_SAMPLES_PER_FFT;
 	while (i--) {
-        sampbuf[i] = sampbuf[i+(SAMPLE_BUFFER_SIZE/2)];
+        sampbuf[i] = sampbuf[i+ADC_SAMPLES_PER_FFT];
 	}
 
 	//timingbuf[timingpos++] = TIMERTSC;
