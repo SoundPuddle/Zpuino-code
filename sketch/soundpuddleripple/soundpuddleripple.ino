@@ -1,12 +1,12 @@
 #include "FFT.h"
-#include <SmallFS.h>
-
+#include "SoundPuddle.h"
+#include "mapping.h"
 #define SAMPLING_FREQ 16000
 
-#define ADC_MOSI WING_C_7
-#define ADC_MISO WING_C_6
-#define ADC_SCK  WING_C_5
-#define ADC_CS  WING_C_4
+#define ADC_MOSI SP_MK2_ADCDIN_PIN
+#define ADC_MISO SP_MK2_ADCDOUT_PIN
+#define ADC_SCK  SP_MK2_ADCDCLK_PIN
+#define ADC_CS  SP_MK2_ADCCS_PIN
 
 
 // Helper for 16-bit SPI transfer
@@ -33,7 +33,7 @@ static FFT_type myfft;
 static int sampbuf[SAMPLE_BUFFER_SIZE];
 volatile unsigned int sampbufptr;
 volatile int samp_done;
-SmallFSFile windowfile;
+extern unsigned int window[];
 
 extern "C" unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -136,7 +136,7 @@ void _zpu_interrupt()
 
 		
 		// Multiply by window
-		winv.v = SPIDATA32;
+                winv.v = window[sampbufptr];
 		//sampbuf[sampbufptr] = winv.v;
 		// Advance file
 		SPIDATA32=0;
@@ -159,7 +159,7 @@ void _zpu_interrupt()
 			sampbufptr = 0;
 		}
 	}
-	USPIDATA16=0; // Start reading next sample
+	USPIDATA16=(2<<11); // Start reading next sample
 
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
@@ -189,18 +189,6 @@ void dumpdata()
 	Serial.println();
 
 }
-
-void resetwindowfile()
-{
-	unsigned char dummy;
-    windowfile.read(&dummy,1);
-
-	// This will preload 1 byte
-	windowfile.seek(0,SEEK_SET);
-	// And we preload 3 more
-	SPIDATA24 = 0;
-}
-
 
 static void shift_buffer()
 {
@@ -240,29 +228,17 @@ void setup()
 
 	digitalWrite(ADC_CS,LOW);
 
-	SmallFS.begin();
-
 	Serial.begin(115200);
 	Serial.println("Starting");
 
-	windowfile=SmallFS.open("W1024");
-
-	if (!windowfile.valid()) {
-		while (1) {
-			Serial.println("Cannot open window file");
-			delay(1000);
-		}
-	}
-    resetwindowfile();
-
 	//USPIDATA16 = 0;
 	USPIDATA = 0;
-    USPIDATA = 0;
+        USPIDATA = 0;
 
-	REGISTER(HWMULTISPIBASE,1)=0; // SPI flash offset
+	REGISTER(HWMULTISPIBASE,1)= (unsigned)&ledmapping[0]; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 5076  - we use this /3 minus one
-	REGISTER(HWMULTISPIBASE,3)= 1691;
+        REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
 	/*
 	 w.lpres := wb_dat_i(4 downto 2);
 	 w.fpres := wb_dat_i(7 downto 5);
@@ -271,7 +247,7 @@ void setup()
 	 010 101 00
 
      */
-    REGISTER(HWMULTISPIBASE,4)= 0x54 ;
+        REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 
 	/* Set up timer for a SAMPLING_FREQ frequency */
 
@@ -306,7 +282,6 @@ void loop()
 	
 
 	/* Set up FFT */
-	resetwindowfile();
 	//timingbuf[timingpos++] = TIMERTSC;
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
@@ -322,7 +297,7 @@ void loop()
 
 	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
-
+        //Serial.println("Sampled");
 	/* Do a FFT on the signal */
 //#if 0
 	myfft.doFFT();
