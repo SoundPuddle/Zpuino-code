@@ -53,6 +53,9 @@ for (my $i=0;$i<$numctrl;$i++) {
 
 
 open(my $out, '>', "out.bin");
+open( my $outc, '>', "out.c" );
+
+print $outc "const unsigned int ledmapping[] = { \n";
 
 for(;;) {
     my $found=undef;
@@ -62,6 +65,7 @@ for(;;) {
             $found=1;
             my $offset = $v*4;
             print $out pack("Cn",$i,$offset);
+            printf $outc "\t0x%08x,\n", $offset + ($i<<16);
             #printf "CH $i 0x%08x\n", $offset;
         }
     }
@@ -69,13 +73,16 @@ for(;;) {
 };
 
 print STDERR "Writing direct mapping at ", tell $out, "\n";
+my $offdirectmap = tell($out)/3;
 
 for (my $i=0;$i<$numctrl;$i++) {
     my $items=0;
     my $cnt = $sizes[$i];
     my $off=4;
     while ($cnt) {
-        print $out pack("Cn",$i,$off);
+            print $out pack("Cn",$i,$off);
+            printf $outc "\t0x%08x,\n", $off + ($i<<16);
+            
         $off+=4;
         $cnt--;
         $items++;
@@ -88,7 +95,9 @@ for (my $i=0;$i<$numctrl;$i++) {
     $cnt = int(($cnt/64));
 
     while ($cnt) {
-        print $out pack("Cn",$i,0);
+            print $out pack("Cn",$i,0);
+            printf $outc "\t0x%08x,\n", ($i<<16);
+            
         $items++;
         $cnt--;
     }
@@ -96,6 +105,8 @@ for (my $i=0;$i<$numctrl;$i++) {
 }
 
 print STDERR "Writing flush code at ", tell $out, "\n";
+my $flushsize=0;
+my $flushoff_words= tell($out)/3;
 
 for (my $i=0;$i<$numctrl;$i++) {
     my $cnt = $sizes[$i];
@@ -104,11 +115,22 @@ for (my $i=0;$i<$numctrl;$i++) {
     $cnt = int(($cnt/64));
 
     while ($cnt) {
-        print $out pack("Cn",$i,0);
-        $cnt--;
+            print $out pack("Cn",$i,0);
+            printf $outc "\t0x%08x,\n", 0 + ($i<<16);
+            $flushsize++;
+            $cnt--;
     }
 }
+print $outc "};\n";
 
 print STDERR "End at ", tell $out, "\n";
 
+close $outc;
+open($outc, '>', "out.h");
+print $outc "extern unsigned int mapping[]; \n";
+print $outc "#define FLUSH_OFFSET $flushoff_words /* In words */\n";
+print $outc "#define FLUSH_SIZE $flushsize /* In words */\n";
+print $outc "#define NUMCONTROLLERS \n" ;
+print $outc "#define DIRECTMAP_OFFSET $offdirectmap /* In words */ \n" ;
+print $outc "#define NUMLEDS $total \n" ;
 close $out;

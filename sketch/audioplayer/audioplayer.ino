@@ -1,6 +1,7 @@
 #include "SoundPuddle.h"
 #include "cbuffer.h"
 #include "FFT.h"
+#include "log256.h"
 
 #define NUMSAMPLES 128
 #define SERPRO_ARDUINO_BUFFERSIZE (NUMSAMPLES*4)+64
@@ -13,11 +14,54 @@ static CircularBuffer<uint32_t,10> soundBuffer;
 
 #define AUDIO_LEFT WING_C_0
 #define AUDIO_RIGHT WING_C_1
+#define LEDS_PER_STRIPE 16
+
+#define NUMBER_STRIPES 16
 
 static unsigned int run=0;
 static unsigned int underruns=0;
 static unsigned int outputarray[512];
 static unsigned int mapping[1024];
+
+/* Led color mappings for analiser. Goes from green to red */
+static const int lvmappings[16] = {
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f838000,
+    0x8f868000,
+    0x8f898000,
+    0x8f8c8000,
+    0x8c8f8000,
+    0x898f8000,
+    0x868f8000,
+    0x838f8000,
+    0x808f8000,
+    0x808f8000,
+};
+
+
+#define FFTSIZE 512
+typedef FFT_512 FFT_type;
+FFT_type myfft;
+
+#define DECAYM 0x7
+#define MAXDECAY (16*DECAYM)
+
+static int lastlevel[NUMBER_STRIPES] = {0}; // For decay
+static int decayindex[NUMBER_STRIPES] = {0};
+static int lpdata[NUMBER_STRIPES] = {0};
+
+#define LPCOEFF 0.3   /* Low-pass coefficient */
+#define SHIFTADJ 8 /* Shift adjust - 256 */
+
+#define GAIN 1.0 /* Unity gain */
+
+#define FBGAIN_ADJ ((1.0/LPCOEFF)-(GAIN))
+#define FLT_R int((LPCOEFF*(1<<SHIFTADJ)))
 
 /* Initialize mappings for all controllers per stripe.
  Returns the sequence size.
@@ -39,7 +83,7 @@ int init_mappings(unsigned *mappings, unsigned *values,
 
         for (ctrl=0; ctrl<nr_controllers; ctrl++) {
             *map = target + (ctrl<<16);
-            values[target>>2] = 0x80808000; /* Nothing */
+            values[target>>2] = LED_OFF; /* Nothing */
             map++, target+=4;
         }
     }
@@ -93,6 +137,7 @@ void setup()
     SoundPuddle.sync();
     SoundPuddle.sync();
     //delay(2000);
+    pinMode(FPGA_LED_PIN, OUTPUT);
 }
 
 int lfsr=0x1;
@@ -107,44 +152,9 @@ unsigned int random()
 }
 
 
-static int lvmappings[16] = {
-    0x8f808000,
-    0x8f808000,
-    0x8f808000,
-    0x8f808000,
-    0x8f808000,
-    0x8f808000,
-    0x8f838000,
-    0x8f868000,
-    0x8f898000,
-    0x8f8c8000,
-    0x8c8f8000,
-    0x898f8000,
-    0x868f8000,
-    0x838f8000,
-    0x808f8000,
-    0x808f8000,
-};
-#define DECAYM 0x7
-#define MAXDECAY (16*DECAYM)
-
-static int lastlevel[16]={0}; // For decay
-static int decayindex[16]={0};
-
-int lpdata[16] = {0};
-
-// int( ($J$3*A6)+L5-((L5/$J$2)*$J$3))
-#define LPCOEFF 0.3   /* Low-pass coefficient */
-#define SHIFTADJ 8 /* Shift adjust - 256 */
-
-#define GAIN 1.0 /* Unity gain */
-
-#define FBGAIN_ADJ ((1.0/LPCOEFF)-(GAIN))
-
-#define FLT_R int((LPCOEFF*(1<<SHIFTADJ)))
 
 /*
- Technicalities:
+ LP Technicalities:
 
    z(0) = LPC * ( z(-1)*FBG - x(0) )
 */
@@ -162,7 +172,7 @@ void level_controller(int controller, int level)
     // Level from 0 to 16
     level = lowpass(controller, level);
 
-    unsigned rv = 0x80808000;
+    unsigned rv = LED_OFF;
     if (level>0)
         rv = lvmappings[(level-1)%16];
     level--;
@@ -170,7 +180,7 @@ void level_controller(int controller, int level)
         if (level>i) {
             outputarray[controller+(i*16)]=lvmappings[i];
         } else {
-            outputarray[controller+(i*16)]=0x80808000;
+            outputarray[controller+(i*16)]=LED_OFF;
         }
     }
 
@@ -192,23 +202,20 @@ void level_controller(int controller, int level)
 
     }
     // Light.
-    outputarray[controller+(16*lastlevel[controller])]=0x80808f00;
+    outputarray[controller+(LEDS_PER_STRIPE * lastlevel[controller])]=0x80808f00;
 }
 
 
-#define SAMPLE_BUFFER_SIZE 64
-#define DOWINDOW 1
-typedef FFT_64 FFT_type;
-FFT_type myfft;
+#define DOWINDOW 0
 
-extern int window[];
-static int sampbuf[SAMPLE_BUFFER_SIZE];
+extern int window[FFTSIZE];
+static int sampbuf[FFTSIZE];
 static int sampbufptr=0;
 bool capture=false;
 
 void loadFFTData() {
     int i;
-    for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
+    for (i=0; i<FFTSIZE; i++) {
         FFT_type::fixed winv;
         myfft.in_real[i].v = sampbuf[i];
 #ifdef DOWINDOW
@@ -221,7 +228,7 @@ void loadFFTData() {
 
 void captureForDisplay(unsigned sample)
 {
-    if (capture && sampbufptr!=SAMPLE_BUFFER_SIZE) {
+    if (capture && sampbufptr!=FFTSIZE) {
         /* Make this into range -2048/2047 */
         sample=((sample>>8)&0xff)+(sample<<8),
         sample&=0xffff;
@@ -259,56 +266,50 @@ void _zpu_interrupt()
     TMR0CTL &= ~_BV(TCTLIF);
 }
 
-#define BUFFERSIZE 16
-/*
- unsigned fftbuffermap[BUFFERSIZE] =
+unsigned fftbuffermap[NUMBER_STRIPES+1] =
 {
-    3, 5, 7, 9,
-    11, 13, 15, 17,
-    19, 21, 22, 24,
-    26, 28, 29, 30
-};*/
-
-unsigned fftbuffermap[BUFFERSIZE] =
-{
-    1, 2, 3, 4,
-    5, 6, 7, 10,
-    19, 21, 22, 24,
-    26, 28, 29, 30
+    1,2,3,4,
+    5,7,10,14,
+    20,28,38,52,
+    72,99,135,186,255
 };
-unsigned rvalues[BUFFERSIZE];
+unsigned rvalues[NUMBER_STRIPES];
 
-void computeLevels()
+void postProcessFFT()
 {
-    int z,i;
-    for (z=0; z<BUFFERSIZE; z++) {
-        i = fftbuffermap[z];
-
+    int i;
+    for (i=0;i<FFTSIZE/2;i++) {
         FFT_type::fixed v = myfft.in_real[i];
-        //#if 0
         v.v>>=2;
         v *= v;
         FFT_type::fixed u = myfft.in_im[i];
         u.v>>=2;
         u *= u;
-
         // TODO: use hardware acceleration here, we already have a module
-
         v += u;
-        v.v = fsqrt16(v.asNative());
-        //#endif
+        myfft.in_real[i].v = fsqrt16(v.asNative());
+    }
+}
 
-        // Convert to HSV
+void computeLevels()
+{
+    int z,i;
+    unsigned max;
+    for (z=0; z<NUMBER_STRIPES; z++) {
+        max=0;
 
-        unsigned val = v.v >>7;
+        for (i=fftbuffermap[z];i<fftbuffermap[z+1];i++) {
+
+            if ((unsigned)myfft.in_real[i].v > max)
+                max=myfft.in_real[i].v;
+        }
+
+        unsigned val = max >>7;
 
         if (val>0x10)
             val=0x10;
 
         rvalues[z] = val;
-        //outbuffer[z+1] = hsvtable[val & 0xff];
-
-        // Serial.println();
     }
 }
 
@@ -324,6 +325,17 @@ void set_sample_rate(unsigned int samplerate)
 
 #define MAXSPRES 16
 unsigned spres=MAXSPRES;
+
+#define LEDPRESMASK 0xff
+unsigned ledpres=0;
+
+static void toggleLED()
+{
+    ledpres++;
+    ledpres&=LEDPRESMASK;
+    if (ledpres==0)
+        digitalWrite(FPGA_LED_PIN, !digitalRead(FPGA_LED_PIN));
+}
 
 void loop()
 {
@@ -351,27 +363,31 @@ void loop()
     if (Serial.available())
         SerPro::processData(Serial.read());
     //SoundPuddle.sync();
-    if (sampbufptr==SAMPLE_BUFFER_SIZE) {
+
+    if (sampbufptr==FFTSIZE) {
         spres--;
         capture=false;
-        if (spres==0)
+        if (spres==0) {
+            toggleLED();
             loadFFTData();
-        sampbufptr=0;
-        if(spres==0)
-            myfft.doFFT();
+        }
         capture=true;
-
+        sampbufptr=0;
+        if(spres==0) {
+            myfft.doFFT();
+            postProcessFFT();
+        }
         if (spres==0)
             computeLevels();
 
         if (spres==0) {
             spres=MAXSPRES;
 
-            level_controller(15,rvalues[0]);
-            level_controller(6, rvalues[1]);
-            level_controller(13,rvalues[2]);
-            level_controller(12,rvalues[3]);
-            level_controller(14,rvalues[4]);
+            level_controller(15,rvalues[1]);
+            level_controller(6, rvalues[3]);
+            level_controller(13,rvalues[5]);
+            level_controller(12,rvalues[7]);
+            level_controller(14,rvalues[9]);
 
             SoundPuddle.sync();
         }

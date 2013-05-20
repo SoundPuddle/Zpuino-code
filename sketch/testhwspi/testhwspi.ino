@@ -2,11 +2,13 @@
 #define HWMULTISPIBASE IO_SLOT(14)
 
 unsigned int outputarray[512];
-
+#include "mapping.h"
 
 /* These values come from the mapper generator
  */
+#if 0
 #define OFFSET_DIRECTMAP 4692
+#endif
 
 struct ctrloffsets {
 	unsigned offset;
@@ -23,9 +25,54 @@ struct ctrloffsets offs[] = {
 	{ 8505, 293 },
 	{ 9384, 293 }
 };
-
+#if 0
 #define OFFSET_FLUSH 9384
 #define SIZE_FLUSH 28 /* in words */
+#endif
+
+/* Compute the flush code size for some led count */
+static int flushSizeForLEDcount(int cnt)
+{
+    cnt+=63;
+    return cnt/64;
+}
+
+/* Initialize mappings for all controllers with 6 LED only per stripe.
+ Returns the sequence size.
+ */
+int init_mappings(unsigned *mappings, unsigned *values,
+                         int nr_controllers, int nr_leds)
+{
+    int ctrl;
+    int led;
+    unsigned *map = mappings;
+    unsigned target = 0;
+
+    /* All mappings are sequential. In order to fully use the
+     controllers, one should distribute the LED sequence evenly.
+     This will ensure all controllers work at same time. */
+
+    for (led=0; led<nr_leds; led++) {
+
+        for (ctrl=0; ctrl<nr_controllers; ctrl++) {
+            *map = target + (ctrl<<16);
+            values[target>>2] = 0x80808000; /* Nothing */
+            map++, target+=4;
+        }
+    }
+    /* Issue flush code for all controllers */
+    int flushSize = flushSizeForLEDcount(nr_leds);
+    for (ctrl=0; ctrl<nr_controllers; ctrl++) {
+        int i;
+        for (i=0;i<flushSize;i++) {
+            *map = target + (ctrl<<16);
+            values[target>>2] = 0x0;
+            map++;
+        }
+    }
+    return map - mappings;
+}
+
 
 
 void controller_wait_ready()
@@ -41,8 +88,8 @@ void controller_start()
 void force_flush_all()
 {
 	controller_wait_ready();
-	REGISTER(HWMULTISPIBASE,1) = OFFSET_FLUSH; // SPI flash offset
-	REGISTER(HWMULTISPIBASE,3) = SIZE_FLUSH;
+	REGISTER(HWMULTISPIBASE,1) = (unsigned)&mapping[FLUSH_OFFSET]; // Memory offset
+	REGISTER(HWMULTISPIBASE,3) = FLUSH_SIZE;
 	controller_start();
 }
 
@@ -56,8 +103,10 @@ void set_memory_array()
 void clear_memory_array()
 {
 	int i;
-	for (i=1;i<512*4;i++) {
-		outputarray[i] = 0x80808000;
+	unsigned v  = 0x80808000;
+	unsigned *t =outputarray;
+	for (i=1;i!=512-1;i++) {
+		*t++ = 0x80808000;
 	}
 }
 
@@ -88,18 +137,18 @@ void move_leds_on_stripe(int ledssize, unsigned pat)
 
 void test_single_stripe(int num, int ledssize)
 {
-	int i;
+    int i;
 	
-	controller_wait_ready();
-	REGISTER(HWMULTISPIBASE,1)= offs[num].offset ; // SPI flash offset
-	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
-	REGISTER(HWMULTISPIBASE,3)= offs[num].size-1 ;
+    controller_wait_ready();
+    REGISTER(HWMULTISPIBASE,1)= (unsigned)&mapping[offs[num].offset/3] ; // SPI flash offset
+    REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
+    REGISTER(HWMULTISPIBASE,3)= offs[num].size-1 ;
 
-	for (i=0;i<4;i++) {
-		move_leds_on_stripe(ledssize,0x80FF8000);
-		move_leds_on_stripe(ledssize,0xFF808000);
-		move_leds_on_stripe(ledssize,0x8080FF00);
-	}
+    for (i=0;i<4;i++) {
+	move_leds_on_stripe(ledssize,0x80FF8000);
+	move_leds_on_stripe(ledssize,0xFF808000);
+	move_leds_on_stripe(ledssize,0x8080FF00);
+    }
 }
 
 void test_stripes()
@@ -123,6 +172,7 @@ void test_dummy()
 	 w.lpres := wb_dat_i(4 downto 2);
 	 w.fpres := wb_dat_i(7 downto 5);
 	 */
+	REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 	//REGISTER(HWMULTISPIBASE,4)= (unsigned)0x1c; // No prescaler - simulation
     /*
 	outputarray[1] = 0xff80ff00;   // G+B
@@ -147,25 +197,24 @@ void test_dummy()
 
 void setup()
 {
+    return;
+    // Fill in the output array
+    outputarray[0] = 0; // First value is zero, so we can flush the strips easily
+    int i;
 
-	// Fill in the output array
+    for (i=1;i<512;i++) {
+        //outputarray[i] = 0x80808000 + ((i>>2)<<16);
+        outputarray[i] = (i & 1) ? 0x80FF8000 : 0x80808000;
+    }
 
-	outputarray[0] = 0; // First value is zero, so we can flush the strips easily
-	int i;
-
-	for (i=1;i<512;i++) {
-		//outputarray[i] = 0x80808000 + ((i>>2)<<16);
-		outputarray[i] = (i & 1) ? 0x80FF8000 : 0x80808000;
-	}
-
-	Serial.begin(115200);
+    Serial.begin(115200);
 }
 
 void hello_world()
 {
 	controller_wait_ready();
 
-	REGISTER(HWMULTISPIBASE,1)= OFFSET_DIRECTMAP;
+	REGISTER(HWMULTISPIBASE,1)= (unsigned)&mapping[DIRECTMAP_OFFSET];
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
 	REGISTER(HWMULTISPIBASE,3)= 9;
@@ -282,26 +331,160 @@ void test_dummy_fft()
 #endif
 }
 
+int lfsr=0x1;
+unsigned int random()
+{
+    for (int i=0;i<16;i++) {
+        int bit0 = ((lfsr >> 22) ^ (lfsr >> 17)) & 0x1;
+        lfsr<<=1;
+        lfsr += bit0;
+    }
+    return lfsr;
+}
+
+
+void sync_controller()
+{
+    controller_wait_ready();
+    controller_start();
+}
+
+static int lvmappings[16] = {
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f808000,
+    0x8f838000,
+    0x8f868000,
+    0x8f898000,
+    0x8f8c8000,
+    0x8c8f8000,
+    0x898f8000,
+    0x868f8000,
+    0x838f8000,
+    0x808f8000,
+    0x808f8000,
+};
+#define DECAYSIZE 16
+static int decaytable[16] =
+{
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+
+};
+
+static int lastlevel[16]={0}; // For decay
+static int decayindex[16]={0};
+
+int lpdata[16] = {0};
+
+int lowpass(int index, int value)
+{
+    int olddata=lpdata[index];
+    int delta = value-olddata;
+    olddata += delta/2;
+    lpdata[index] = olddata;
+    return olddata;
+}
+
+void level_controller(int controller, int level)
+{
+    // Level from 0 to 16
+    level = lowpass(controller, level);
+
+    unsigned rv = 0x80808000;
+    if (level>0)
+        rv = lvmappings[(level-1)%16];
+    level--;
+    for (int i=0; i<16; i++) {
+        if (level>i) {
+            outputarray[controller+(i*16)]=lvmappings[i];
+        } else {
+            outputarray[controller+(i*16)]=0x80808000;
+        }
+    }
+
+    //outputarray[12+(16*level)]=0x8f8f8f00;
+
+    if (level>=lastlevel[controller]) {
+        lastlevel[controller]=level;
+        decayindex[controller]=0;
+    }
+    else {
+        // Decay.
+        lastlevel[controller]-=decaytable[decayindex[controller]];
+        if (lastlevel[controller]<0)
+            lastlevel[controller]=0;
+        if (decayindex[controller]<DECAYSIZE)
+            decayindex[controller]++;
+
+    }
+    // Light.
+    outputarray[controller+(16*lastlevel[controller])]=0x80808f00;
+}
+
+
+
 void loop()
 {
-    
-    /*
-	do {
-		Serial.println("Press SPACE to start");
-		if (Serial.available()) {
-			if (Serial.read() & 0xff==' ') {
-				break;
-			}
-		}
+    int leds = init_mappings(mapping, outputarray, 16,16);
+    REGISTER(HWMULTISPIBASE,1)= (unsigned)&mapping[0]; // SPI flash offset
+    REGISTER(HWMULTISPIBASE,2)= (unsigned)&outputarray[0]; // base memory address
 
-		delay(1000);
-    	set_memory_array();
-		controller_wait_ready();
-		controller_start();
-	}  while (1);
-    */
-	//test_stripes();
-	//test_dummy();
+    //Writing direct mapping at 4692  - we use this /3 minus one
+    REGISTER(HWMULTISPIBASE,3)= leds-1;
+    //REGISTER(HWMULTISPIBASE,4)= 0;
+    REGISTER(HWMULTISPIBASE,4)= 0x54 ;
+
+    int ctrln=12;
+
+    while (1) {
+        for (int i=0; i<=16; i++) {
+            level_controller(13, random()%16+1);
+            level_controller(14, random()%16+1);
+            level_controller(12, random()%16+1);
+            sync_controller();
+            delay(50);
+        }
+        /*
+        for (int i=0; i<16*16; i++) {
+            outputarray[i]=0x80808000;
+        } */
+        //sync_controller();
+    }
+
+    do {
+        Serial.println("Press SPACE to start");
+        if (Serial.available()) {
+            if (Serial.read() & 0xff==' ') {
+                break;
+            }
+        }
+
+        delay(1000);
+        set_memory_array();
+        controller_wait_ready();
+        controller_start();
+    }  while (1);
+
+
+	test_stripes();
+	test_dummy();
 	test_dummy_fft();
 
     //hello_world();
