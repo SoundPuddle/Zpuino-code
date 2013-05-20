@@ -49,7 +49,7 @@ extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
 #define BUFFERSIZE 16
-#define NUMBUFFERS 104
+#define NUMBUFFERS 160
 
 unsigned outbuffer[1+ (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 unsigned fftbuffermap[BUFFERSIZE] =

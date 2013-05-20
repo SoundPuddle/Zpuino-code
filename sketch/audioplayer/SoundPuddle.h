@@ -1,5 +1,7 @@
 #include "Arduino.h"
 
+#define LED_OFF 0x80808000
+
 class SoundPuddle_class
 {
 public:
