@@ -53,9 +53,9 @@ for (my $i=0;$i<$numctrl;$i++) {
 
 
 open(my $out, '>', "out.bin");
-open( my $outc, '>', "out.c" );
+open( my $outc, '>', "mapping.cpp" );
 
-print $outc "const unsigned int ledmapping[] = { \n";
+print $outc "unsigned int ledmapping[] = { \n";
 
 for(;;) {
     my $found=undef;
@@ -126,11 +126,13 @@ print $outc "};\n";
 print STDERR "End at ", tell $out, "\n";
 
 close $outc;
-open($outc, '>', "out.h");
-print $outc "extern unsigned int mapping[]; \n";
+open($outc, '>', "mapping.h");
+print $outc "#ifndef __MAPPING_H__\n";
+print $outc "#define __MAPPING_H__\n";
+print $outc "extern unsigned int ledmapping[]; \n";
 print $outc "#define FLUSH_OFFSET $flushoff_words /* In words */\n";
 print $outc "#define FLUSH_SIZE $flushsize /* In words */\n";
-print $outc "#define NUMCONTROLLERS \n" ;
 print $outc "#define DIRECTMAP_OFFSET $offdirectmap /* In words */ \n" ;
 print $outc "#define NUMLEDS $total \n" ;
+print $outc "#endif\n" ;
 close $out;
