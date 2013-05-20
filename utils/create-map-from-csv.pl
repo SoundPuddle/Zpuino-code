@@ -115,10 +115,11 @@ for (my $i=0;$i<$numctrl;$i++) {
     $cnt = int(($cnt/64));
 
     while ($cnt) {
-            print $out pack("Cn",$i,0);
-            printf $outc "\t0x%08x,\n", 0 + ($i<<16);
-            $flushsize++;
-            $cnt--;
+        print $out pack("Cn",$i,0);
+        my $sep = ($cnt==1 && $i==($numctrl-1)) ? "":",";
+        printf $outc "\t0x%08x".$sep."\n", 0 + ($i<<16);
+        $flushsize++;
+        $cnt--;
     }
 }
 print $outc "};\n";
