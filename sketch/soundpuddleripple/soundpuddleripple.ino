@@ -39,12 +39,12 @@ extern "C" unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
-#define BUFFERSIZE 16
-#define NUMBUFFERS 104
+#define BUFFERSIZE 12
+#define NUMBUFFERS 160
 
 unsigned outbuffer[1+ (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 unsigned fftbuffermap[BUFFERSIZE] =
-{ 67, 75, 84, 89, 100, 113, 126, 134, 150, 169, 179, 201, 225, 253, 268, 301 };
+{ 67, 75, 84, 89, 100, 113, 126, 134, 150, 169, 179, 201};
 
 // HW acceleration base address
 #define HWMULTISPIBASE IO_SLOT(14)
