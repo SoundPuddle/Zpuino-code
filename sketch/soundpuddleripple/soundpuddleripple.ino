@@ -3,10 +3,16 @@
 #include "mapping.h"
 #define SAMPLING_FREQ 16000
 
+/* Apply a low-pass filter to FFT output */
+#define APPLY_LOWPASS
+/* Gain */
+fp32_16_16 gain = 10.0;
+
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
 #define ADC_CS  SP_MK2_ADCCS_PIN
+#define ADC_channel 0x02
 
 
 // Helper for 16-bit SPI transfer
@@ -17,7 +23,6 @@
 #define SPIDATA16 *((&SPIDATA)+2)
 #define SPIDATA24 *((&SPIDATA)+4)
 #define SPIDATA32 *((&SPIDATA)+6)
-
 
 
 #define FFT_POINTS 1024
@@ -44,7 +49,10 @@ extern void printhex(unsigned int c);
 
 unsigned outbuffer[1+ (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 unsigned fftbuffermap[BUFFERSIZE] =
-{ 67, 75, 84, 89, 100, 113, 126, 134, 150, 169, 179, 201};
+{ 34, 35, 38, 40, 42, 45, 48, 50, 53, 56, 60, 63};
+
+
+
 
 // HW acceleration base address
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -151,7 +159,7 @@ void _zpu_interrupt()
 		 800 (2048) -> Zero        0    0h    00000h
 		 */
 
-		//USPIDATA16=0; // Start reading next sample
+		//USPIDATA16=0; // Start readingUSPIDATA16=0 next sample
 		sampbufptr++;
 
 		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
@@ -159,7 +167,7 @@ void _zpu_interrupt()
 			sampbufptr = 0;
 		}
 	}
-	USPIDATA16=(2<<11); // Start reading next sample
+	USPIDATA16=(ADC_channel<<11); // Start reading next sample (the first number here controls the ADC channel)
 
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
