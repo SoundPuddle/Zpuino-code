@@ -57,15 +57,21 @@ open( my $outc, '>', "mapping.cpp" );
 
 print $outc "unsigned int ledmapping[] = { \n";
 
+my @ctrlcount;
+
 for(;;) {
     my $found=undef;
     for (my $i=0;$i<$numctrl;$i++) {
         my $v = shift(@{$controllers[$i]});
         if (defined $v) {
+            $ctrlcount[$i]||='0';
+            my $ledn = $ctrlcount[$i];
+            $ctrlcount[$i]++;
             $found=1;
             my $offset = $v*4;
             print $out pack("Cn",$i,$offset);
-            printf $outc "\t0x%08x,\n", $offset + ($i<<16);
+            printf $outc "\t0x%08x, /* %s */\n", $offset + ($i<<16),
+                "Controller $i, led $ledn, offset $offset";
             #printf "CH $i 0x%08x\n", $offset;
         }
     }
@@ -81,7 +87,8 @@ for (my $i=0;$i<$numctrl;$i++) {
     my $off=4;
     while ($cnt) {
             print $out pack("Cn",$i,$off);
-            printf $outc "\t0x%08x,\n", $off + ($i<<16);
+            printf $outc "\t0x%08x, /* %s */ \n", $off + ($i<<16),
+                "Controller $i, offset $off (direct)";
             
         $off+=4;
         $cnt--;
@@ -96,7 +103,8 @@ for (my $i=0;$i<$numctrl;$i++) {
 
     while ($cnt) {
             print $out pack("Cn",$i,0);
-            printf $outc "\t0x%08x,\n", ($i<<16);
+            printf $outc "\t0x%08x, /* %s */ \n", ($i<<16),
+                "Controller $i, flush";
             
         $items++;
         $cnt--;
