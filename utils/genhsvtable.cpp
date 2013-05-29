@@ -60,6 +60,10 @@ int main()
 	float r,g,b;
 	float hue;
 	float hsvalue;
+	float rgain = 1; //this is green
+	float ggain = 0.75; //this is red
+	float bgain = 1;
+	
 
 	puts("unsigned int hsvtable[256] = {\n");
 	for (i=0;i<256;i++) {
@@ -67,19 +71,23 @@ int main()
 //		hue = 1 - (2.5 - log10(255-float()i+0.001))/2.5; //not very good, small range
 //		hue = sin((float)i/255);
 //		hsvalue = (float)i/255; - 0.05;
-//		hue = (float)i/200;
+		hue = (float)i/255
 //		hsvalue = (float)i/255;
-		hue = (float)log10(i)/2.55;
-		hsvalue = sin((float)i/350) - 0.01;
+//		hue = (float)log10(i)/1.5; //out of ~2.5 range
+//		hue = (float)sqrt(i + 0.1)/15; //pretty good candidate for Apo (May 19th)
+		hsvalue = sin((float)i/255);
 		if (hue < 0) {hue = 0;}
 		if (hsvalue < 0) {hsvalue = 0;}
 		//HSL( (0.7+(float)log(i)/4.5), 0.99, (float)log(2*i)/10.0,r,g,b); //burning man 2012
 //		HSL( (0.7+(float)log(i)/4.5), 0.99, hsvalue,r,g,b); //burning man 2012
-		HSL( (0.2 + hue), 0.99, hsvalue,r,g,b); //original line
+		HSL( (0.5 + hue), 0.99, hsvalue,r,g,b); //original line
 //		HSL( (0.0+(float)log(i)/5.0), 0.99, (float)log(4*i)/12.0,r,g,b); // greens and yellows
 //		HSL( (0.2+(float)log(i)/2.0), 0.99, (float)i/16.0,r,g,b);
-		int ur =(int)r;
-		int ug =(int)g;
+		r = r * rgain; //swapping channels to fix the mapping
+		g = g * ggain;
+		b = b * bgain;
+		int ur =(int)g;
+		int ug =(int)r;
 		int ub =(int)b;
 		CLAMP(ur);
 		CLAMP(ug);
