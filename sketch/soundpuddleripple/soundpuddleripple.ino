@@ -6,13 +6,14 @@
 //#include <Arduino.h>
 //#define SAMPLING_FREQ 16000
 //#define SAMPLING_FREQ 16406
-#define SAMPLING_FREQ 18416
+//#define SAMPLING_FREQ 18416
+#define SAMPLING_FREQ 21901
 
 
 /* Apply a low-pass filter to FFT output */
 #define APPLY_LOWPASS
 /* Gain */
-fp32_16_16 gain = 10.0;
+fp32_16_16 gain = 5.0;
 
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
@@ -56,8 +57,8 @@ extern void printhex(unsigned int c);
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 //unsigned fftbuffermap[BUFFERSIZE] = {32,34,36,38,41,43,46,48,51,54,58,61};
 //unsigned fftbuffermap[BUFFERSIZE] = {32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92,97,103,109,116,123}; //value for ~16khz
-unsigned fftbuffermap[BUFFERSIZE] = {29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92,97,103,109}; //for sample rate = 18416, C4 - B5 (two 12 note octaves)
-
+//unsigned fftbuffermap[BUFFERSIZE] = {29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92,97,103,109}; //for sample rate = 18416, C4 - B5 (two 12 note octaves)
+unsigned fftbuffermap[BUFFERSIZE]= {24,25,27,29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92};//for sample rate = 21901, C4 - B5 (two 12 note octaves)
 
 volatile int pixelhue;
 volatile int pixelvalue;
@@ -360,7 +361,8 @@ void loop()
 		
 //		val = log(val);
 //		val = fsqrt16(val);
-		val = val/256;
+		val = val/255;
+//		if (val > 255) {val = 255;}
 		
                 Serial.print(val); //print the values
                 Serial.print(";"); //
