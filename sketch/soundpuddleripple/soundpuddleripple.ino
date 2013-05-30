@@ -1,18 +1,25 @@
 #include "FFT.h"
 #include "SoundPuddle.h"
 #include "mapping.h"
-#define SAMPLING_FREQ 16000
+//#include "fixedpoint.h"
+//#include <math.h>
+//#include <Arduino.h>
+//#define SAMPLING_FREQ 16000
+//#define SAMPLING_FREQ 16406
+//#define SAMPLING_FREQ 18416
+#define SAMPLING_FREQ 21901
+
 
 /* Apply a low-pass filter to FFT output */
 #define APPLY_LOWPASS
 /* Gain */
-fp32_16_16 gain = 10.0;
+fp32_16_16 gain = 5.0;
 
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
 #define ADC_CS  SP_MK2_ADCCS_PIN
-#define ADC_channel 0x02
+#define ADC_channel 0x01
 
 
 // Helper for 16-bit SPI transfer
@@ -44,14 +51,17 @@ extern "C" unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
-#define BUFFERSIZE 12
+#define BUFFERSIZE 24
 #define NUMBUFFERS 160
 
-unsigned outbuffer[1+ (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
-unsigned fftbuffermap[BUFFERSIZE] =
-{ 34, 35, 38, 40, 42, 45, 48, 50, 53, 56, 60, 63};
+unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
+//unsigned fftbuffermap[BUFFERSIZE] = {32,34,36,38,41,43,46,48,51,54,58,61};
+//unsigned fftbuffermap[BUFFERSIZE] = {32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92,97,103,109,116,123}; //value for ~16khz
+//unsigned fftbuffermap[BUFFERSIZE] = {29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92,97,103,109}; //for sample rate = 18416, C4 - B5 (two 12 note octaves)
+unsigned fftbuffermap[BUFFERSIZE]= {24,25,27,29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92};//for sample rate = 21901, C4 - B5 (two 12 note octaves)
 
-
+volatile int pixelhue;
+volatile int pixelvalue;
 
 
 // HW acceleration base address
@@ -271,6 +281,8 @@ void setup()
 
 }
 
+
+
 unsigned timingbuf[16];
 
 
@@ -329,6 +341,7 @@ void loop()
 		i = fftbuffermap[z];
 
 		FFT_type::fixed v = myfft.in_real[i];
+
 //#if 0
 		v.v>>=2;
 		v *= v;
@@ -344,10 +357,19 @@ void loop()
 
 		// Convert to HSV
 
-		unsigned val = v.v >>8;
+		unsigned val = v.v;
+		
+//		val = log(val);
+//		val = fsqrt16(val);
+		val = val/255;
+//		if (val > 255) {val = 255;}
+		
+                Serial.print(val); //print the values
+                Serial.print(";"); //
 
 		if (val>0xff)
 			val=0xff;
+
 
 		outbuffer[z+1] = hsvtable[val & 0xff];
 
