@@ -46,6 +46,9 @@ static int sampbuf[SAMPLE_BUFFER_SIZE];
 volatile unsigned int sampbufptr;
 volatile int samp_done;
 extern unsigned int window[];
+static unsigned int downcounter;
+static unsigned int downcounterval;
+static int framesync = 0;
 
 extern "C" unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -175,7 +178,12 @@ void _zpu_interrupt()
 		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
 			samp_done = 1;
 			sampbufptr = 0;
-		}
+                }
+                if (downcounter==0) {
+                    framesync=1;
+                } else {
+                    downcounter--;
+                }
 	}
 	USPIDATA16=(ADC_channel<<11); // Start reading next sample (the first number here controls the ADC channel)
 
@@ -293,67 +301,44 @@ void loop()
 	int timingpos=0;
 	static unsigned int oldv;
 
-	/* Wait for sample buffer to fill */
-	timingbuf[timingpos++] = TIMERTSC;
+        /* Wait for computation to complete */
 
 	while (samp_done==0) { }
-
-	timingbuf[timingpos++] = TIMERTSC;
-	
-
-	/* Set up FFT */
-	//timingbuf[timingpos++] = TIMERTSC;
 
 	for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		myfft.in_real[i].v= sampbuf[i];
 		myfft.in_im[i].v=0;
 	}
 
-	//timingbuf[timingpos++] = TIMERTSC;
-
-	/* NOTE: this is where we can load the new HSV mapping, if needed */
-
-
-
-	/* Ok, release buffer, so we can keep on filling using the interrupt handler */
 	samp_done=0;
-        //Serial.println("Sampled");
-	/* Do a FFT on the signal */
-//#if 0
-	myfft.doFFT();
-//#endif
+        myfft.doFFT();
 
-	//timingbuf[timingpos++] = TIMERTSC;
-    /*
-	Serial.print("Start run ");
-	Serial.println(run);
-	*/
+        /* Wait for the frame sync */
+
+        while (framesync==0) {}
+
+        framesync=0;
+        /* Set up the timer again */
+        downcounter = downcounterval;
+
 
 	controller_wait_ready();
-	//timingbuf[timingpos++] = TIMERTSC;
 
 	shift_buffer();
-
-	//timingbuf[timingpos++] = TIMERTSC;
-//	outbuffer[0] = 0;
 
 	for (z=0; z<BUFFERSIZE; z++) {
 		i = fftbuffermap[z];
 
 		FFT_type::fixed v = myfft.in_real[i];
 
-//#if 0
 		v.v>>=2;
 		v *= v;
 		FFT_type::fixed u = myfft.in_im[i];
 		u.v>>=2;
 		u *= u;
 
-		// TODO: use hardware acceleration here, we already have a module
-
-        v += u;
+                v += u;
 		v.v = fsqrt16(v.asNative());
-//#endif
 
 		// Convert to HSV
 
@@ -375,22 +360,14 @@ void loop()
 
 	   // Serial.println();
 	}
-	//timingbuf[timingpos++] = TIMERTSC;
-
-	/*
-	 Serial.print("End run ");
-	 Serial.println(run);
-	 */
-    /*
-    */
 #if 0
 	show_rgb_fft();
 #endif
-    outbuffer[0] = 0;
-	controller_start();
-    timingbuf[timingpos++] = TIMERTSC;
-//	controller_wait_ready();
-	run++;
+        outbuffer[0] = 0;
+        controller_start();
+#if 0
+        timingbuf[timingpos++] = TIMERTSC;
+        run++;
 	Serial.print("Times: ");
 	{
 		for (i=1;i<timingpos;i++) {
@@ -398,7 +375,8 @@ void loop()
 			Serial.print(" ");
 		}
 	}
-	Serial.println("\n");
+        Serial.println("\n");
+#endif
 }
 
 
