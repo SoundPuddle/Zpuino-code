@@ -4,9 +4,9 @@
 #include <math.h>
 #include <stdio.h>
 //#include "fixedpoint.h"
-#define SAMPLING_FREQ 12000
-//#define SAMPLING_FREQ 21901
-
+//#define SAMPLING_FREQ 18000
+#define SAMPLING_FREQ 21901
+//#define SAMPLING_FREQ 44100
 
 /* Apply a low-pass filter to FFT output */
 #define APPLY_LOWPASS
@@ -61,6 +61,14 @@ extern void printhex(unsigned int c);
 #define INTERPOLATIONTRIGGER 255 // the threshold at which a new LED frame is interpolated
 
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
+unsigned outbuffer_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_r[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_g[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_b[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned bin_val_old[1 + BUFFERSIZE ];
 unsigned bin_val_new[1 + BUFFERSIZE ];
 unsigned r_old[1 + (BUFFERSIZE) ];
@@ -77,18 +85,23 @@ int b_delta[1 + (BUFFERSIZE) ];
 unsigned r[1 + (BUFFERSIZE) ];
 unsigned g[1 + (BUFFERSIZE) ];
 unsigned b[1 + (BUFFERSIZE) ];
-unsigned rtrans,gtrans,btrans;
+unsigned rtrans,gtrans,btrans,rtrans0,gtrans0,btrans0,rtrans1,gtrans1,btrans1;
 float r_stepsize, g_stepsize, b_stepsize;
 float fraction1024[1024];
+unsigned int interpolationcounter;
+unsigned int decaycounter;
 
 unsigned fftbuffermap[BUFFERSIZE]= {92,87,82,77,73,69,65,61,58,54,51,48,46,43,41,38,36,34,30,29,27,25,24};
 
 volatile int pixelhue;
 volatile int pixelvalue;
 
-#define CLAMP(x) if ((x)<0) x=0; if ((x)>255) x=255;
+
+
+#define CLAMP(x) if ((x)<0) x=0; if ((x)>127) x=127;
 unsigned rval,gval,bval;
 float hue;
+volatile float hue_offset;
 float hsvalue;
 float rgain = 1; //this is green
 float ggain = 0.75; //this is red
@@ -193,6 +206,65 @@ static void shift_buffer()
 	}
 }
 
+static void interpolate_buffer_decay()
+{
+	int i;
+	int rtrans, gtrans, btrans;
+	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+	    rtrans0 = outbuffer[i] >> 24;
+	    gtrans0 = (outbuffer[i] & 0x00ff0000) >> 16;
+	    btrans0 = (outbuffer[i] & 0x0000ff00) >> 8;
+	    rtrans1 = outbuffer[i+BUFFERSIZE] >> 24;
+	    gtrans1 = (outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16;
+	    btrans1 = (outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8;
+	    rtrans = ((rtrans0/4) + (rtrans1/4)) + (rtrans1/2);
+	    gtrans = ((gtrans0/4) + (gtrans1/4)) + (gtrans1/2);
+	    btrans = ((btrans0/4) + (btrans1/4)) + (btrans1/2);
+	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+	}
+	Serial.print("t.");
+	decaycounter++;
+}
+
+static void interpolate_buffer_betadecay()
+{
+	int i;
+	int rtrans, gtrans, btrans;
+	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+// 	    rtrans0 = outbuffer[i] >> 24;
+// 	    gtrans0 = (outbuffer[i] & 0x00ff0000) >> 16;
+// 	    btrans0 = (outbuffer[i] & 0x0000ff00) >> 8;
+// 	    rtrans1 = outbuffer[i+BUFFERSIZE] >> 24;
+// 	    gtrans1 = (outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16;
+// 	    btrans1 = (outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8;
+	    rtrans = (outbuffer_r[i+BUFFERSIZE]/(1+interpolationcounter)) + ((interpolationcounter*outbuffer_r[i])/8);
+	    gtrans = (outbuffer_g[i+BUFFERSIZE]/(1+interpolationcounter)) + ((interpolationcounter*outbuffer_g[i])/8);
+	    btrans = (outbuffer_b[i+BUFFERSIZE]/(1+interpolationcounter)) + ((interpolationcounter*outbuffer_b[i])/8);
+	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+	}
+	interpolationcounter++;
+	Serial.print("t.");
+	Serial.print(btrans);
+	Serial.print(";");
+}
+
+static void interpolate_buffer_sampbuf()
+{
+	int i;
+	int rtrans, gtrans, btrans;
+	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+	    //rtrans = outbuffer_r[i] + (fraction1024[sampbufptr] * outbuffer_r_delta[i]);
+	    //gtrans = outbuffer_g[i] + (fraction1024[sampbufptr] * outbuffer_g_delta[i]);
+	    //btrans = outbuffer_b[i] + (fraction1024[sampbufptr] * outbuffer_b_delta[i]);
+	    rtrans = outbuffer_r[i+BUFFERSIZE] + outbuffer_r_delta[i];
+	    gtrans = outbuffer_g[i+BUFFERSIZE] + outbuffer_g_delta[i];
+	    btrans = outbuffer_b[i+BUFFERSIZE] + outbuffer_b_delta[i];
+	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+	}
+	Serial.print("t.");
+	controller_start();
+}
+
 float Hue_2_RGB( float v1, float v2, float vH )             //Function Hue_2_RGB
 {
   if ( vH < 0 ) 
@@ -220,11 +292,11 @@ void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval)
   float var_2;
   float Hu=H+.33;
   float Hd=H-.33;
-  if ( S == 0 )                       //HSL from 0 to 1
+  if ( S == 0 )   //HSL from 0 to 1
   {
-    Rval = L * 255;                      //RGB results from 0 to 255
-    Gval = L * 255;
-    Bval = L * 255;
+    Rval = L * 127; //RGB results from 0 to 255
+    Gval = L * 127;
+    Bval = L * 127;
   }
   else
   {
@@ -233,39 +305,65 @@ void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval)
     else
       var_2 = ( L + S ) - ( S * L );
     var_1 = 2 * L - var_2;
-    Rval = round(255 * Hue_2_RGB( var_1, var_2, Hu ));
+    Rval = round(127 * Hue_2_RGB( var_1, var_2, Hu ));
     //     Serial.print("Rval:");
     //     Serial.println(Hue_2_RGB( var_1, var_2, Hu ));
-    Gval = round(255 * Hue_2_RGB( var_1, var_2, H ));
-    Bval = round(255 * Hue_2_RGB( var_1, var_2, Hd ));
+    Gval = round(127 * Hue_2_RGB( var_1, var_2, H ));
+    Bval = round(127 * Hue_2_RGB( var_1, var_2, Hd ));
   }
 }
 
-void genhsvtable()
+void hsvToRgb(float h, float s, float v, float& Rval, float& Gval, float& Bval) {
+  float r, g, b;
+  int i = int(h * 6);
+  float f = h * 6 - i;
+  float p = v * (1 - s);
+  float q = v * (1 - f * s);
+  float t = v * (1 - (1 - f) * s);
+  switch(i % 6){
+    case 0: r = v, g = t, b = p; break;
+    case 1: r = q, g = v, b = p; break;
+    case 2: r = p, g = v, b = t; break;
+    case 3: r = p, g = q, b = v; break;
+    case 4: r = t, g = p, b = v; break;
+    case 5: r = v, g = p, b = q; break;
+  }
+  Rval = r * 255;
+  Gval = g * 255;
+  Bval = b * 255;
+}
+
+void genhsvtable(float hue_offset)
 {
   int i = 0;
   float Rval, Gval, Bval;
   for (i=0;i<256;i++) {
-    hue = (float)i/300; //Chosen value for Mark's performnce in reds
-    hsvalue = sin((float)i/255); //This was the function used at Unify and CO.lab
+    hue = (float)i/32; //Chosen value for Mark's performnce in reds
+    hsvalue = sin(((float)i-1)/255);
     if (hue < 0) {hue = 0;}
     if (hsvalue < 0) {hsvalue = 0;}
-    HSL( (0.65 + hue), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
-//     Rval = Rval * rgain; //swapping channels to fix the mapping
-//     Gval = Gval * ggain;
-//     Bval = Bval * bgain;
-    unsigned ur = (unsigned int)Rval;
+    HSL( (hue + hue_offset + 0.85), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
+     Rval = Rval * rgain; //swapping channels to fix the mapping
+     Gval = Gval * ggain;
+     Bval = Bval * bgain;
+    unsigned ur = (unsigned int)Rval/2;
     unsigned ug = (unsigned int)Gval;
     unsigned ub = (unsigned int)Bval;
     CLAMP(ur);
     CLAMP(ug);
     CLAMP(ub);
+    Serial.print(ur);
+    Serial.print(".");
+    Serial.print(ug);
+    Serial.print(".");
+    Serial.print(ub);
+    Serial.println();
     unsigned pixel = ( ((ur|0x80) << 16) | ((ug|0x80) << 8) | (ub|0x80) ) << 8;
     hsvtable[i] = pixel;
-    Serial.print(i);
-    Serial.print(".");
-    Serial.print(pixel);
-    Serial.print(";");
+//     Serial.print(i);
+//     Serial.print(".");
+//     Serial.print(pixel);
+//     Serial.print(";");
   }
 }
 
@@ -325,7 +423,7 @@ void setup()
 	INTRCTL=1;  /* Enable interrupts */
 	
 	//generate HSV table
-	genhsvtable();
+	genhsvtable(0.6);
 	int n = 0;
 	for (n = 0; n<1024; n++) {
 	  fraction1024[n] = (float)n/1024.0;
@@ -351,6 +449,20 @@ void loop()
         /* Wait for computation to complete */
 
 	if (samp_done == 0) {
+	  controller_wait_ready();
+	  //interpolate_buffer_sampbuf();
+	  if (decaycounter < 1)
+	  {
+	    interpolate_buffer_decay();
+	    controller_start();
+	  }
+	  else {	
+// 	    hue_offset = hue_offset + 0.01;
+// 	    genhsvtable(hue_offset);
+	  }
+	}
+	
+	if (samp_done == 42) {
 	  controller_wait_ready();
 	  shift_buffer();
 	  for (z=0; z<BUFFERSIZE; z++) {
@@ -378,7 +490,100 @@ void loop()
 	  samp_counter = 0;
 	}
 
+	if (samp_done == 42) {
+		  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
+			  myfft.in_real[i].v= sampbuf[i];
+			  myfft.in_im[i].v=0;
+		  }
+		  samp_done=0;
+		  myfft.doFFT();
+		  controller_wait_ready();
+		  //shift_buffer();
+		  for (z=0; z<BUFFERSIZE; z++) {
+		    i = fftbuffermap[z];
+		    FFT_type::fixed v = myfft.in_real[i];
+		    v.v>>=2;
+		    v *= v;
+		    FFT_type::fixed u = myfft.in_im[i];
+		    u.v>>=2;
+		    u *= u;
+		    v += u;
+		    v.v = fsqrt16(v.asNative());
+		    // Convert to HSV
+		    unsigned val = v.v;
+		    val = val/255;
+		    if (val>0xff) {val=0xff;}
+		    bin_val_old[z] = bin_val_new[z];
+		    bin_val_new[z] = val;
+		    outbuffer[z+1] = hsvtable[bin_val_old[z]]; // use the precomputed hsv table to converter the FFT bin v alue to RGB values
+		    }
+		  // Initiate SPI transctions for LED output
+		  outbuffer[0] = 0;
+		  // Output buffer delta stuff for interpolate_buffer_sampbuf()
+		  for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+		    outbuffer_r[i] = outbuffer[i] >> 24;
+		    outbuffer_g[i] = (outbuffer[i] & 0x00ff0000) >> 16;
+		    outbuffer_b[i] = (outbuffer[i] & 0x0000ff00) >> 8;
+		    outbuffer_r_delta[i] = (outbuffer_r[i] - outbuffer_r[i+BUFFERSIZE])/10;
+		    outbuffer_g_delta[i] = (outbuffer_g[i] - outbuffer_g[i+BUFFERSIZE])/10;
+		    outbuffer_b_delta[i] = (outbuffer_b[i] - outbuffer_b[i+BUFFERSIZE])/10;
+		  }
+		  Serial.print(outbuffer_b[i+BUFFERSIZE]);
+		  Serial.print(".");
+		  Serial.print(outbuffer_b[i+BUFFERSIZE+BUFFERSIZE]);
+		  Serial.print(".");
+		  Serial.print(outbuffer_b_delta[i+BUFFERSIZE]);
+		  Serial.println();
+	}
+	
+	// This is the if branch for beta decay
 	if (samp_done == 1) {
+	  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
+		  myfft.in_real[i].v= sampbuf[i];
+		  myfft.in_im[i].v=0;
+	  }
+	  samp_done=0;
+	  decaycounter=0;
+	  myfft.doFFT();
+	  controller_wait_ready();
+	  shift_buffer();
+	  for (z=0; z<BUFFERSIZE; z++) {
+	    i = fftbuffermap[z];
+	    FFT_type::fixed v = myfft.in_real[i];
+	    v.v>>=2;
+	    v *= v;
+	    FFT_type::fixed u = myfft.in_im[i];
+	    u.v>>=2;
+	    u *= u;
+	    v += u;
+	    v.v = fsqrt16(v.asNative());
+	    // Convert to HSV
+	    unsigned val = v.v;
+	    val = val/255;
+	    if (val>0xff) {val=0xff;}
+	    bin_val_old[z] = bin_val_new[z];
+	    bin_val_new[z] = val;
+	    outbuffer[z+1] = hsvtable[bin_val_old[z]]; // use the precomputed hsv table to converter the FFT bin v alue to RGB values
+// 	    Serial.print(val);
+// 	    Serial.print(".");
+	    }
+	  // Initiate SPI transctions for LED output
+	  outbuffer[0] = 0;
+	  controller_start();
+	  new_frame = 0;
+	  interpolate_frame = 0;
+	  for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+	    outbuffer_r[i] = outbuffer[i] >> 24;
+	    outbuffer_g[i] = (outbuffer[i] & 0x00ff0000) >> 16;
+	    outbuffer_b[i] = (outbuffer[i] & 0x0000ff00) >> 8;
+	  }
+	  //Serial.print(millis());
+	  Serial.println();
+	}
+	  
+	  
+	// This is the if branch used while coding with Todd
+	if (samp_done == 42) {
 	  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		  myfft.in_real[i].v= sampbuf[i];
 		  myfft.in_im[i].v=0;
@@ -441,119 +646,5 @@ void loop()
 	  Serial.print(millis());
 	  Serial.println();
 	}
-
-	if (new_frame == 42) {
-	  controller_wait_ready();
-	  shift_buffer();
-	  for (z=0; z<BUFFERSIZE; z++) {
-		  i = fftbuffermap[z];
-		  FFT_type::fixed v = myfft.in_real[i];
-		  v.v>>=2;
-		  v *= v;
-		  FFT_type::fixed u = myfft.in_im[i];
-		  u.v>>=2;
-		  u *= u;
-		  v += u;
-		  v.v = fsqrt16(v.asNative());
-
-		  // Convert to HSV
-		  unsigned val = v.v;
-		  val = val/255;
- //		if (val > 255) {val = 255;}
-		  if (print_fft_vals == 1) {
-		    Serial.print(val); //print the values
-		    Serial.print(";");
-		  }
-		  if (val>0xff)
-			  val=0xff;
-// 		  hue = (float)val/200; //Chosen value for Mark's performance in reds
-// 		  hsvalue = sin((float)val/128); //This was the function used at Unify and CO.lab
-// 		  if (hue < 0) {hue = 0;}
-// 		  if (hsvalue < 0) {hsvalue = 0;}
-// 		  HSL( (0.95 + hue), 0.99, hsvalue,rval,gval,bval);
-// 		  rval = rval * rgain;
-// 		  gval = gval * ggain;
-// 		  bval = bval * bgain;
-// 		  r_old[z] = r[z];
-// 		  g_old[z] = g[z];
-// 		  b_old[z] = b[z];
-// 		  r[z] = (unsigned int)rval;
-// 		  g[z] = (unsigned int)gval;
-// 		  b[z] = (unsigned int)bval;
-// 		  CLAMP(r[z]);
-// 		  CLAMP(g[z]);
-// 		  CLAMP(b[z]);
-// 		  r_new[z] = r[z];
-// 		  g_new[z] = g[z];
-// 		  b_new[z] = b[z];
-// 		  r[z] = r_old[z];
-// 		  g[z] = g_old[z];
-// 		  b[z] = b_old[z];
-// 		  r_stepsize = ((float)r_new[z]-(float)r_old[z]) / INTERPOLATEDFRAMES;
-// // 		  Serial.print("rstep: ");
-// // 		  Serial.print(r_stepsize);
-// //   		  Serial.print(" ; ");
-// 		  g_stepsize = ((float)g_new[z]-(float)g_old[z]) / INTERPOLATEDFRAMES;
-// 		  b_stepsize = ((float)b_new[z]-(float)b_old[z]) / INTERPOLATEDFRAMES;
-// 		  unsigned pixel = ( ((r[z]|0x80) << 16) | ((g[z]|0x80) << 8) | ((b[z]|0x80)) ) << 8;
-  //		Serial.print(pixel);
-  // 		Serial.print(" ; ");
-// 		  Serial.print(samp_counter);
-// 		  Serial.print(" ; ");
-// 		  Serial.print(interpolation_step_counter);
-// 		  Serial.print(" ; ");
-// 		  Serial.print(r_new[z]);
-// 		  Serial.print(" ; ");
-// 		  Serial.print(r_old[z]);
-// 		  Serial.print(" ; ");
-// 		  Serial.print(r_stepsize);
-// 		  Serial.print(" ; ");
-		  //outbuffer[z+1] = (0x808080 | ((uint32_t)ug << 16) | ((uint32_t)ur << 8) | (uint32_t)ub);
-		  //Serial.print((0x808080 | ((uint32_t)ug << 16) | ((uint32_t)ur << 8) | (uint32_t)ub))>>1;
-  // 		outbuffer[z+1] = hsvtable[val & 0xff];
-  // 		Serial.print(outbuffer[z+1]);
-  // 		Serial.print(" ; ");
-		  outbuffer[z+1] = hsvtable[val];
-  // 		Serial.print(outbuffer[z+1]);
-	  }
-	  Serial.print("n");
-// 	  Serial.print(";");
-// 	  Serial.print(millis());
-	  Serial.println();
-	  new_frame = 0;
-	  interpolate_frame = 0;
-	  outbuffer[0] = 0;
-	  controller_start();
-// 	  Serial.print(r[1]);
-// 	  Serial.println();
-	}
-	
-	if (interpolate_frame == 55) {
-	  controller_wait_ready();
-	  shift_buffer();
-	    for (z=0; z<BUFFERSIZE; z++) {
-	      r[z] = r[z]+r_stepsize;
-	      g[z] = g[z]+g_stepsize;
-	      b[z] = b[z]+b_stepsize;
-	      unsigned pixel = ( ((r[z]|0x80) << 16) | ((g[z]|0x80) << 8) | ((b[z]|0x80)) ) << 8;
-	      outbuffer[z+1] = pixel;
-	    }
-	    outbuffer[0] = 0;
-	    controller_start();
-// 	    Serial.print(r[1]);
-// 	    Serial.println();
-// 	    Serial.print("i");
-// 	    Serial.print(";");
-// 	    Serial.print(millis());
-// 	    Serial.print(";");
-// 	    Serial.print(interpolation_step_counter);
-// 	    Serial.print(" ; ");
-//	    Serial.println();
-	    interpolate_frame = 0;
-	    interpolation_step_counter++;
-	    samp_counter = 0;
-	  }
-//  	  Serial.print(samp_counter);
-//  	  Serial.print(" ; ");
-	}
+}
 	
