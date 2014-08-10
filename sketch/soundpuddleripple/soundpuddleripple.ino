@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 //#include "fixedpoint.h"
-#define SAMPLING_FREQ 12000
+#define SAMPLING_FREQ 22100
 //#define SAMPLING_FREQ 21901
 
 
@@ -51,7 +51,7 @@ static unsigned int interpolate_frame; // flag to trigger drawing an interpolate
 static unsigned int interpolation_step_counter; // how many steps of interpolation have occured in this fft window cycle
 volatile unsigned int samp_counter; // variable to count FFT acquisition cycles 
 
-extern "C" unsigned int hsvtable[256];
+unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
@@ -61,15 +61,20 @@ extern void printhex(unsigned int c);
 #define INTERPOLATIONTRIGGER 255 // the threshold at which a new LED frame is interpolated
 
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
-unsigned r_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned g_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned b_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned r_new[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned g_new[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned b_new[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned r[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned g[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned b[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned bin_val_old[1 + BUFFERSIZE ];
+unsigned bin_val_new[1 + BUFFERSIZE ];
+unsigned r_old[1 + (BUFFERSIZE) ];
+unsigned g_old[1 + (BUFFERSIZE) ];
+unsigned b_old[1 + (BUFFERSIZE) ];
+unsigned r_new[1 + (BUFFERSIZE) ];
+unsigned g_new[1 + (BUFFERSIZE) ];
+unsigned b_new[1 + (BUFFERSIZE) ];
+unsigned rgb_new[1 + (BUFFERSIZE) ];
+unsigned rgb_old[1 + (BUFFERSIZE) ];
+int r_delta[1 + (BUFFERSIZE) ];
+unsigned r[1 + (BUFFERSIZE) ];
+unsigned g[1 + (BUFFERSIZE) ];
+unsigned b[1 + (BUFFERSIZE) ];
 float r_stepsize, g_stepsize, b_stepsize;
 
 unsigned fftbuffermap[BUFFERSIZE]= {24,25,27,29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92};//for sample rate = 21901, C4 - B5 (two 12 note octaves)
@@ -135,15 +140,15 @@ void _zpu_interrupt()
 		 */
 		//USPIDATA16=0; // Start readingUSPIDATA16=0 next sample
 		sampbufptr++;
-		samp_counter++;
+// 		samp_counter++;
 		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
 			samp_done = 1;
 			sampbufptr = 0;
 			new_frame = 1;
                 }
-                if (samp_counter >= INTERPOLATIONTRIGGER) {
-		  interpolate_frame = 1;
-                }
+//                 if (samp_counter >= INTERPOLATIONTRIGGER) {
+// 		  interpolate_frame = 1;
+//                 }
 	}
 	
 	USPIDATA16=(ADC_channel<<11); // Start reading next sample (the first number here controls the ADC channel)
@@ -232,6 +237,34 @@ void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval)
   }
 }
 
+void genhsvtable()
+{
+  int i = 0;
+  float Rval, Gval, Bval;
+  for (i=0;i<256;i++) {
+    hue = (float)i/200; //Chosen value for Mark's performnce in reds
+    hsvalue = sin((float)i/128); //This was the function used at Unify and CO.lab
+    if (hue < 0) {hue = 0;}
+    if (hsvalue < 0) {hsvalue = 0;}
+    HSL( (0.95 + hue), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
+//     Rval = Rval * rgain; //swapping channels to fix the mapping
+//     Gval = Gval * ggain;
+//     Bval = Bval * bgain;
+    unsigned ur = (unsigned int)Rval;
+    unsigned ug = (unsigned int)Gval;
+    unsigned ub = (unsigned int)Bval;
+    CLAMP(ur);
+    CLAMP(ug);
+    CLAMP(ub);
+    unsigned pixel = ( ((ur|0x80) << 16) | ((ug|0x80) << 8) | (ub|0x80) ) << 8;
+    hsvtable[i] = pixel;
+    Serial.print(i);
+    Serial.print(".");
+    Serial.print(pixel);
+    Serial.print(";");
+  }
+}
+
 
 void setup()
 {
@@ -286,6 +319,9 @@ void setup()
 	TMR0CTL = _BV(TCTLENA)|_BV(TCTLCCM)|_BV(TCTLDIR)| _BV(TCTLIEN);
 	INTRMASK = _BV(INTRLINE_TIMER0); // Enable Timer0 interrupt
 	INTRCTL=1;  /* Enable interrupts */
+	
+	//generate HSV table
+	genhsvtable();
 
 #if 0
 	init_rgb();
@@ -301,11 +337,34 @@ void loop()
 	int i,z;
 	static int run=0;
 	int timingpos=0;
-	static unsigned int oldv;
 
         /* Wait for computation to complete */
 
-// 	while (samp_done==0) { }
+	if (samp_done == 0) {
+	  controller_wait_ready();
+	  shift_buffer();
+	  for (z=0; z<BUFFERSIZE; z++) {
+	    r[z] = r[z]+r_stepsize;
+	    g[z] = g[z]+g_stepsize;
+	    b[z] = b[z]+b_stepsize;
+	    unsigned pixel = ( ((r[z]|0x80) << 16) | ((g[z]|0x80) << 8) | ((b[z]|0x80)) ) << 8;
+	    outbuffer[z+1] = pixel;
+	  }
+	  outbuffer[0] = 0;
+	  controller_start();
+	  // 	    Serial.print(r[1]);
+	  // 	    Serial.println();
+	  Serial.print("i");
+	  Serial.print(";");
+	  Serial.print(millis());
+	  Serial.print(";");
+	  // 	    Serial.print(interpolation_step_counter);
+	  // 	    Serial.print(" ; ");
+	  //	    Serial.println();
+	  interpolate_frame = 0;
+	  interpolation_step_counter++;
+	  samp_counter = 0;
+	}
 
 	if (samp_done == 1) {
 	  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
@@ -314,9 +373,56 @@ void loop()
 	  }
 	  samp_done=0;
 	  myfft.doFFT();
+	  controller_wait_ready();
+	  shift_buffer();
+	  for (z=0; z<BUFFERSIZE; z++) {
+	    i = fftbuffermap[z];
+	    FFT_type::fixed v = myfft.in_real[i];
+	    v.v>>=2;
+	    v *= v;
+	    FFT_type::fixed u = myfft.in_im[i];
+	    u.v>>=2;
+	    u *= u;
+	    v += u;
+	    v.v = fsqrt16(v.asNative());
+	    // Convert to HSV
+	    unsigned val = v.v;
+	    val = val/255;
+	    if (val>0xff) {val=0xff;}
+	    bin_val_old[z] = bin_val_new[z];
+	    bin_val_new[z] = val;
+	    outbuffer[z+1] = hsvtable[bin_val_old[z]]; // use the precomputed hsv table to converter the FFT bin v alue to RGB values
+	    }
+	  // Initiate SPI transctions for LED output
+	  outbuffer[0] = 0;
+	  controller_start();
+	  new_frame = 0;
+	  interpolate_frame = 0;
+	  // While we're waiting for the SPI transaction to occur, determine the difference between the old and new R, G, and B values
+	  for (z=0; z<BUFFERSIZE; z++) {
+	    rgb_old[z] = rgb_new[z];
+	    rgb_new[z] = hsvtable[bin_val_new[z]];
+	    r_old[z] = rgb_old[z] >> 24;
+	    r_new[z] = rgb_new[z] >> 24;
+	    r_delta[z] = r_new[z]-r_old[z];
+	    Serial.print(r_delta[z]);
+	    Serial.print("|");
+	    Serial.print(r_old[z]);
+	    Serial.print("|");
+	    Serial.print(r_new[z]);
+	    Serial.print(";");
+	  }
+	  Serial.print("n");
+	  Serial.print(";");
+// 	  Serial.print(bin_val_new[5]);
+// 	  Serial.print(";");
+// 	  Serial.print(bin_val_old[5]);
+	  Serial.print(";");
+	  Serial.print(millis());
+	  Serial.println();
 	}
 
-	if (new_frame == 1) {
+	if (new_frame == 42) {
 	  controller_wait_ready();
 	  shift_buffer();
 	  for (z=0; z<BUFFERSIZE; z++) {
@@ -340,36 +446,36 @@ void loop()
 		  }
 		  if (val>0xff)
 			  val=0xff;
-		  hue = (float)val/200; //Chosen value for Mark's performnce in reds
-		  hsvalue = sin((float)val/128); //This was the function used at Unify and CO.lab
-		  if (hue < 0) {hue = 0;}
-		  if (hsvalue < 0) {hsvalue = 0;}
-		  HSL( (0.95 + hue), 0.99, hsvalue,rval,gval,bval);
+// 		  hue = (float)val/200; //Chosen value for Mark's performance in reds
+// 		  hsvalue = sin((float)val/128); //This was the function used at Unify and CO.lab
+// 		  if (hue < 0) {hue = 0;}
+// 		  if (hsvalue < 0) {hsvalue = 0;}
+// 		  HSL( (0.95 + hue), 0.99, hsvalue,rval,gval,bval);
 // 		  rval = rval * rgain;
 // 		  gval = gval * ggain;
 // 		  bval = bval * bgain;
-		  r_old[z] = r[z];
-		  g_old[z] = g[z];
-		  b_old[z] = b[z];
-		  r[z] = (unsigned int)rval;
-		  g[z] = (unsigned int)gval;
-		  b[z] = (unsigned int)bval;
+// 		  r_old[z] = r[z];
+// 		  g_old[z] = g[z];
+// 		  b_old[z] = b[z];
+// 		  r[z] = (unsigned int)rval;
+// 		  g[z] = (unsigned int)gval;
+// 		  b[z] = (unsigned int)bval;
 // 		  CLAMP(r[z]);
 // 		  CLAMP(g[z]);
 // 		  CLAMP(b[z]);
-		  r_new[z] = r[z];
-		  g_new[z] = g[z];
-		  b_new[z] = b[z];
-		  r[z] = r_old[z];
-		  g[z] = g_old[z];
-		  b[z] = b_old[z];
-		  r_stepsize = ((float)r_new[z]-(float)r_old[z]) / INTERPOLATEDFRAMES;
-// 		  Serial.print("rstep: ");
-// 		  Serial.print(r_stepsize);
-//   		  Serial.print(" ; ");
-		  g_stepsize = ((float)g_new[z]-(float)g_old[z]) / INTERPOLATEDFRAMES;
-		  b_stepsize = ((float)b_new[z]-(float)b_old[z]) / INTERPOLATEDFRAMES;
-		  unsigned pixel = ( ((r[z]|0x80) << 16) | ((g[z]|0x80) << 8) | ((b[z]|0x80)) ) << 8;
+// 		  r_new[z] = r[z];
+// 		  g_new[z] = g[z];
+// 		  b_new[z] = b[z];
+// 		  r[z] = r_old[z];
+// 		  g[z] = g_old[z];
+// 		  b[z] = b_old[z];
+// 		  r_stepsize = ((float)r_new[z]-(float)r_old[z]) / INTERPOLATEDFRAMES;
+// // 		  Serial.print("rstep: ");
+// // 		  Serial.print(r_stepsize);
+// //   		  Serial.print(" ; ");
+// 		  g_stepsize = ((float)g_new[z]-(float)g_old[z]) / INTERPOLATEDFRAMES;
+// 		  b_stepsize = ((float)b_new[z]-(float)b_old[z]) / INTERPOLATEDFRAMES;
+// 		  unsigned pixel = ( ((r[z]|0x80) << 16) | ((g[z]|0x80) << 8) | ((b[z]|0x80)) ) << 8;
   //		Serial.print(pixel);
   // 		Serial.print(" ; ");
 // 		  Serial.print(samp_counter);
@@ -387,11 +493,13 @@ void loop()
   // 		outbuffer[z+1] = hsvtable[val & 0xff];
   // 		Serial.print(outbuffer[z+1]);
   // 		Serial.print(" ; ");
-		  outbuffer[z+1] = pixel;
+		  outbuffer[z+1] = hsvtable[val];
   // 		Serial.print(outbuffer[z+1]);
 	  }
-//	  Serial.print("n");
-//	  Serial.println();
+	  Serial.print("n");
+	  Serial.print(";");
+	  Serial.print(millis());
+	  Serial.println();
 	  new_frame = 0;
 	  interpolate_frame = 0;
 	  outbuffer[0] = 0;
@@ -400,7 +508,7 @@ void loop()
 // 	  Serial.println();
 	}
 	
-	if (interpolate_frame == 1) {
+	if (interpolate_frame == 55) {
 	  controller_wait_ready();
 	  shift_buffer();
 	    for (z=0; z<BUFFERSIZE; z++) {
@@ -414,8 +522,10 @@ void loop()
 	    controller_start();
 // 	    Serial.print(r[1]);
 // 	    Serial.println();
-//	    Serial.print("i");
-// 	    Serial.print(" ; ");
+// 	    Serial.print("i");
+// 	    Serial.print(";");
+// 	    Serial.print(millis());
+// 	    Serial.print(";");
 // 	    Serial.print(interpolation_step_counter);
 // 	    Serial.print(" ; ");
 //	    Serial.println();
