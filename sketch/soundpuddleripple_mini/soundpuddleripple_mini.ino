@@ -333,33 +333,113 @@ void hsvToRgb(float h, float s, float v, float& Rval, float& Gval, float& Bval) 
   Bval = b * 255;
 }
 
+//This function is tested good at Hackerspace, 2014-08-10
+void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue) {
+  float red;
+  float green;
+  float blue;
+  while (h > 1.0) {h = h- 1.0;};
+  while (h < 0.0) {h = h + 1.0;}
+  while (v > 1.0) {v = v - 1.0;};
+  while (v < 0.0) {v = v+ 1.0;}
+  float hue    = h;
+  float sat    = s;
+  float val    = v;
+
+  if (sat > 0.0) {
+    hue *= 6.0;      // sector 0 to 5
+    uint32_t sextant = floorf(hue);;
+    float fract = hue - sextant;      // fractional part of h
+
+    float p = val * ( 1 - sat );
+    float q = val * ( 1 - sat * fract );
+    float t = val * ( 1 - sat * ( 1 - fract ) );
+
+    switch(sextant) {
+      case 0:
+        red = val;
+        green = t;
+        blue = p;
+        break;
+      case 1:
+        red = q;
+        green = val;
+        blue = p;
+        break;
+      case 2:
+        red = p;
+        green = val;
+        blue = t;
+        break;
+      case 3:
+        red = p;
+        green = q;
+        blue = val;
+        break;
+      case 4:
+        red = t;
+        green = p;
+        blue = val;
+        break;
+      default:    // case 5:
+        red = val;
+        green = p;
+        blue = q;
+        break;
+	
+    }
+  }
+  Rvalue = (uint8_t)(red*127.0);
+  Gvalue = (uint8_t)(green*127.0);
+  Bvalue = (uint8_t)(blue*127.0);
+}
+
 void genhsvtable(float hue_offset)
 {
   int i = 0;
   float Rval, Gval, Bval;
+  uint8_t Rvalue, Gvalue, Bvalue;
+  delay(2000);
   for (i=0;i<256;i++) {
-    hue = (float)i/32; //Chosen value for Mark's performnce in reds
-    hsvalue = sin(((float)i-1)/255);
+    hue = (((float)i)/255)+hue_offset; //Chosen value for Mark's performnce in reds
+    hsvalue = (((float)i)-5)/255;
     if (hue < 0) {hue = 0;}
     if (hsvalue < 0) {hsvalue = 0;}
-    HSL( (hue + hue_offset + 0.85), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
-     Rval = Rval * rgain; //swapping channels to fix the mapping
-     Gval = Gval * ggain;
-     Bval = Bval * bgain;
-    unsigned ur = (unsigned int)Rval/2;
-    unsigned ug = (unsigned int)Gval;
-    unsigned ub = (unsigned int)Bval;
+    HSL( (hue), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
+    Serial.print(hue);
+    Serial.print(".;");
+    Serial.print(hsvalue);
+    Serial.print("----");
+    Serial.print("----");
+    hsv2rgb((hue), 0.99, hsvalue,Rvalue,Gvalue,Bvalue);
+//     Rval = Rval * rgain; //swapping channels to fix the mapping
+//     Gval = Gval * ggain;
+//     Bval = Bval * bgain;
+    unsigned ur = (unsigned int)Rvalue;
+    unsigned ug = (unsigned int)Gvalue;
+    unsigned ub = (unsigned int)Bvalue;
     CLAMP(ur);
     CLAMP(ug);
     CLAMP(ub);
     Serial.print(ur);
     Serial.print(".");
     Serial.print(ug);
-    Serial.print(".");
+    Serial.print(".;");
     Serial.print(ub);
-    Serial.println();
+    Serial.print("----");
+//     Serial.print(ur);
+//     Serial.print(".");
+//     Serial.print(ug);
+//     Serial.print(".");
+//     Serial.print(ub);
     unsigned pixel = ( ((ur|0x80) << 16) | ((ug|0x80) << 8) | (ub|0x80) ) << 8;
     hsvtable[i] = pixel;
+    Serial.print(Rvalue);
+    Serial.print(".");
+    Serial.print(Gvalue);
+    Serial.print(".");
+    Serial.print(Bvalue);
+    Serial.println();
 //     Serial.print(i);
 //     Serial.print(".");
 //     Serial.print(pixel);
@@ -374,7 +454,6 @@ void setup()
 	samp_done = 0;
 
 	/* Configure USPI / ADC */
-
 	// Pins
 	pinMode(ADC_MOSI,   OUTPUT);
 	pinMode(ADC_SCK,    OUTPUT);
