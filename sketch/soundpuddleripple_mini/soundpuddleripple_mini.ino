@@ -56,7 +56,7 @@ extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
 #define BUFFERSIZE 24
-#define NUMBUFFERS 160
+#define NUMBUFFERS 40
 #define INTERPOLATEDFRAMES 4
 #define INTERPOLATIONTRIGGER 255 // the threshold at which a new LED frame is interpolated
 
@@ -81,7 +81,7 @@ unsigned rtrans,gtrans,btrans;
 float r_stepsize, g_stepsize, b_stepsize;
 float fraction1024[1024];
 
-unsigned fftbuffermap[BUFFERSIZE]= {24,25,27,29,30,32,34,36,38,41,43,46,48,51,54,58,61,65,69,73,77,82,87,92};//for sample rate = 21901, C4 - B5 (two 12 note octaves)
+unsigned fftbuffermap[BUFFERSIZE]= {92,87,82,77,73,69,65,61,58,54,51,48,46,43,41,38,36,34,30,29,27,25,24};
 
 volatile int pixelhue;
 volatile int pixelvalue;
