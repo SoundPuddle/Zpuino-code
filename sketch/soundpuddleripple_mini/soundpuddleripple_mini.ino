@@ -36,6 +36,12 @@ fp32_16_16 gain = 5.0;
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
+// Specify which interpolation functions to use
+#define STEPINTERPOLATION 0
+#define DECAYINTERPOLATION 1
+#define NOINTERPOLATION 0
+#define SHIFTINTERPOLATION 0
+
 typedef FFT_1024 FFT_type;
 
 static FFT_type myfft;
@@ -49,7 +55,7 @@ static int framesync = 0;
 static unsigned int new_frame; // flag to draw a new LED frame
 static unsigned int interpolate_frame; // flag to trigger drawing an interpolated LED frame inbetween FFT windows
 static unsigned int interpolation_step_counter; // how many steps of interpolation have occured in this fft window cycle
-volatile unsigned int samp_counter; // variable to count FFT acquisition cycles 
+volatile unsigned int samp_counter; // variable to count FFT acquisition cycles
 
 unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -59,6 +65,7 @@ extern void printhex(unsigned int c);
 #define NUMBUFFERS 40
 #define INTERPOLATEDFRAMES 4
 #define INTERPOLATIONTRIGGER 255 // the threshold at which a new LED frame is interpolated
+#define stepcount 3
 
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 unsigned outbuffer_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
@@ -68,7 +75,7 @@ unsigned outbuffer_b[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned outbuffer_r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned outbuffer_g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned outbuffer_b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned outbuffer_r_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned bin_val_old[1 + BUFFERSIZE ];
 unsigned bin_val_new[1 + BUFFERSIZE ];
 unsigned r_old[1 + (BUFFERSIZE) ];
@@ -201,6 +208,25 @@ static void shift_buffer()
 		outbuffer[i+BUFFERSIZE] = outbuffer[i];
 	}
 }
+static void interpolate_buffer_shift()
+{
+  	  controller_wait_ready();
+	  shift_buffer();
+	  int z;
+	  for (z=0; z<BUFFERSIZE; z++) {
+	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]);
+	    gtrans = g[z] + (fraction1024[sampbufptr] * g_delta[z]);
+	    btrans = b[z] + (fraction1024[sampbufptr] * b_delta[z]);
+// 	    Serial.print(r[z]);
+// 	    Serial.print(";");
+	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+	    outbuffer[z+1] = pixel;
+	  }
+	  outbuffer[0] = 0;
+	  controller_start();	 
+	  Serial.print("shft");
+	  delay(5);
+}
 
 static void interpolate_buffer_decay()
 {
@@ -221,6 +247,8 @@ static void interpolate_buffer_decay()
 	Serial.print("t.");
 	decaycounter++;
 }
+
+static void interpolate_buffer_step() {}
 
 float Hue_2_RGB( float v1, float v2, float vH )             //Function Hue_2_RGB
 {
@@ -385,7 +413,6 @@ void genhsvtable(float hue_offset)
   }
 }
 
-
 void setup()
 {
 	sampbufptr=0;
@@ -431,7 +458,6 @@ void setup()
         REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 
 	/* Set up timer for a SAMPLING_FREQ frequency */
-
 	TMR0CTL = 0;
 	TMR0CNT = 0;
 	TMR0CMP = (CLK_FREQ / SAMPLING_FREQ )- 1;
@@ -441,6 +467,13 @@ void setup()
 	
 	//generate HSV table
 	genhsvtable(0.6);
+	//generate floating point look-up table for i/1024
+	int n = 0;
+	for (n = 0; n<1024; n++) {
+	  fraction1024[n] = (float)n/1024.0;
+	  Serial.print(fraction1024[n]);
+	  Serial.print(";");
+	}
 
 #if 0
 	init_rgb();
@@ -458,19 +491,22 @@ void loop()
 
 	if (samp_done == 0) {
 	  controller_wait_ready();
-	  //interpolate_buffer_sampbuf();
-	  if (decaycounter < 1)
-	  {
-	    interpolate_buffer_decay();
-	    controller_start();
+	  if (SHIFTINTERPOLATION == 1) {
+	    interpolate_buffer_shift();
 	  }
-	  else {	
-// 	    hue_offset = hue_offset + 0.01;
-// 	    genhsvtable(hue_offset);
+	  else if (DECAYINTERPOLATION == 1) {
+	    if (decaycounter < 1)
+	      {
+		interpolate_buffer_decay();
+		controller_start();
+	      }
 	  }
+	  else if (STEPINTERPOLATION == 1) {
+	    interpolate_buffer_step();
+	  }
+	  else if (NOINTERPOLATION == 1) {}
 	}
 	
-	// This is the if branch for decay
 	if (samp_done == 1) {
 	  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		  myfft.in_real[i].v= sampbuf[i];
@@ -506,13 +542,32 @@ void loop()
 	  controller_start();
 	  new_frame = 0;
 	  interpolate_frame = 0;
-	  // Unwrap the R,G,B values to usage by an interpolation function
-	  for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-	    outbuffer_r[i] = outbuffer[i] >> 24;
-	    outbuffer_g[i] = (outbuffer[i] & 0x00ff0000) >> 16;
-	    outbuffer_b[i] = (outbuffer[i] & 0x0000ff00) >> 8;
+	  if (STEPINTERPOLATION == 1) {
+	    //Unwrap the R,G,B values to usage by an interpolation function
+	    for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+	      outbuffer_r[i] = outbuffer[i] >> 24;
+	      outbuffer_g[i] = (outbuffer[i] & 0x00ff0000) >> 16;
+	      outbuffer_b[i] = (outbuffer[i] & 0x0000ff00) >> 8;
+	      outbuffer_r_delta[i] = (outbuffer[i-BUFFERSIZE] >> 24) - outbuffer_r[i];
+	      outbuffer_g_delta[i] = ((outbuffer[i-BUFFERSIZE] & 0x00ff0000) >> 16) - outbuffer_g[i];
+	      outbuffer_b_delta[i] = ((outbuffer[i-BUFFERSIZE] & 0x0000ff00) >> 8) - outbuffer_b[i];
+	      outbuffer_r_step[i] = outbuffer_r_delta[i]/stepcount;
+	    }
 	  }
-	  //Serial.print(millis());
+	  Serial.print(millis());
+	  //Performance FFT-window calculations necesary for the shift interpolation function
+	  if (SHIFTINTERPOLATION == 1) {
+	    for (z=0; z<BUFFERSIZE; z++) {
+	    rgb_old[z] = rgb_new[z];
+	    rgb_new[z] = hsvtable[bin_val_new[z]];
+	    r_delta[z] = (rgb_new[z] >> 24) - (rgb_old[z] >> 24);
+	    g_delta[z] = ((rgb_new[z] & 0x00ff0000) >> 16) - ((rgb_old[z] & 0x00ff0000) >> 16);
+	    b_delta[z] = ((rgb_new[z] & 0x0000ff00) >> 8) - ((rgb_old[z] & 0x0000ff00) >> 8);
+	    r[z] = rgb_old[z] >> 24;
+	    g[z] = (rgb_old[z] & 0x00ff0000) >> 16;
+	    b[z] = (rgb_old[z] & 0x0000ff00) >> 8;
+	    }
+	  }
 	  Serial.println();
 	}
 }
