@@ -17,7 +17,7 @@ fp32_16_16 gain = 5.0;
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
 #define ADC_CS  SP_MK2_ADCCS_PIN
-#define ADC_channel 0x02
+#define ADC_channel 0x02 // specify the ADC channel
 
 #define print_fft_vals 0
 
@@ -36,11 +36,26 @@ fp32_16_16 gain = 5.0;
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
+// Specifiy FFT and LED buffer sizes
+#define BUFFERSIZE 24
+#define NUMBUFFERS 40
+
 // Specify which interpolation functions to use
 #define STEPINTERPOLATION 0
 #define DECAYINTERPOLATION 1
 #define NOINTERPOLATION 0
 #define SHIFTINTERPOLATION 0
+
+// Specifiy interpolation function variables
+#define stepcount 3
+
+// HSV color space controls
+float hue_offset = 0.6; // phase shift for the HSV function (range 0.00-0.99)
+float rgain = 1; // red channel gain for the HSV color generation function
+float ggain = 0.75; // gree channel gain for the HSV color generation function
+float bgain = 1; // blue channel gain for the HSV color generation function
+
+unsigned fftbuffermap[BUFFERSIZE]= {92,87,82,77,73,69,65,61,58,54,51,48,46,43,41,38,36,34,30,29,27,25,24};
 
 typedef FFT_1024 FFT_type;
 
@@ -49,33 +64,22 @@ static int sampbuf[SAMPLE_BUFFER_SIZE];
 volatile unsigned int sampbufptr;
 volatile int samp_done;
 extern unsigned int window[];
-static unsigned int downcounter;
-static unsigned int downcounterval;
-static int framesync = 0;
-static unsigned int new_frame; // flag to draw a new LED frame
-static unsigned int interpolate_frame; // flag to trigger drawing an interpolated LED frame inbetween FFT windows
-static unsigned int interpolation_step_counter; // how many steps of interpolation have occured in this fft window cycle
 volatile unsigned int samp_counter; // variable to count FFT acquisition cycles
 
-unsigned int hsvtable[256];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
-
-#define BUFFERSIZE 24
-#define NUMBUFFERS 40
-#define INTERPOLATEDFRAMES 4
-#define INTERPOLATIONTRIGGER 255 // the threshold at which a new LED frame is interpolated
-#define stepcount 3
 
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 unsigned outbuffer_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned outbuffer_r[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned outbuffer_g[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned outbuffer_b[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_r_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_r_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_g_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_b_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned bin_val_old[1 + BUFFERSIZE ];
 unsigned bin_val_new[1 + BUFFERSIZE ];
 unsigned r_old[1 + (BUFFERSIZE) ];
@@ -96,21 +100,17 @@ unsigned rtrans,gtrans,btrans,rtrans0,gtrans0,btrans0,rtrans1,gtrans1,btrans1;
 float r_stepsize, g_stepsize, b_stepsize;
 float fraction1024[1024];
 unsigned int interpolationcounter;
-unsigned int decaycounter;
-
-unsigned fftbuffermap[BUFFERSIZE]= {92,87,82,77,73,69,65,61,58,54,51,48,46,43,41,38,36,34,30,29,27,25,24};
+unsigned int decaycounter; // keeps track of the number of decay interplation steps within an FFT window period. Used to limit the steps.
+unsigned int stepcounter; // keeps track of the number of interpolation steps happening within an FFT window period
 
 volatile int pixelhue;
 volatile int pixelvalue;
 
 #define CLAMP(x) if ((x)<0) x=0; if ((x)>127) x=127;
+
+unsigned int hsvtable[256];
 unsigned rval,gval,bval;
-float hue;
-volatile float hue_offset;
-float hsvalue;
-float rgain = 1; //this is green
-float ggain = 0.75; //this is red
-float bgain = 1;
+float hue, hsvalue;
 
 // HW acceleration base address
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -132,126 +132,14 @@ unsigned rgboff=0;
 void rgb_latch(unsigned n)
 {
 	n = ((n + 63) / 64) * 3;
-	while(n--)
-		SPI3DATA=0;
+	while(n--) {SPI3DATA=0};
 }
 
 #endif
 
 /* End debugging */
 
-void _zpu_interrupt()
-{
-	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
-		FFT_type::fixed fv;
-		FFT_type::fixed winv;
-		fv.v = ((int)(USPIDATA & 0xffff)-2047);
-		// Multiply by window
-                winv.v = window[sampbufptr];
-		//sampbuf[sampbufptr] = winv.v;
-		// Advance file
-		SPIDATA32=0;
-		fv *= winv;
-		sampbuf[sampbufptr] = fv.v;
-		/*                                    <<5    signextend
-		 000 (0) -> -1            -2048 800h  10000h
-		 fff (4095) -> +1          2047 7ffh  0FFE0h
-		 800 (2048) -> Zero        0    0h    00000h
-		 */
-		//USPIDATA16=0; // Start readingUSPIDATA16=0 next sample
-		sampbufptr++;
-// 		samp_counter++;
-		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
-			samp_done = 1;
-			sampbufptr = 0;
-			new_frame = 1;
-                }
-//                 if (samp_counter >= INTERPOLATIONTRIGGER) {
-// 		  interpolate_frame = 1;
-//                 }
-	}
-	
-	USPIDATA16=(ADC_channel<<11); // Start reading next sample (the first number here controls the ADC channel)
-
-	TMR0CTL &= ~(BIT(TCTLIF));
-}
-
-void controller_wait_ready()
-{
-	while (REGISTER(HWMULTISPIBASE,0)!=0);
-}
-
-void controller_start()
-{
-	REGISTER(HWMULTISPIBASE,0)=1;
-}
-
-void dumpdata()
-{
-    int i;
-	for (i=0;i<FFT_POINTS/2;i++) {
-		Serial.print(myfft.in_real[i].asInt());
-		Serial.print("[");
-		Serial.print(myfft.in_im[i].asInt());
-		Serial.print("]");
-		Serial.print("what's up!");
-		Serial.print(" ");
-	}
-	Serial.println();
-
-}
-
-static void shift_buffer()
-{
-	int i;
-	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-		outbuffer[i+BUFFERSIZE] = outbuffer[i];
-	}
-}
-static void interpolate_buffer_shift()
-{
-  	  controller_wait_ready();
-	  shift_buffer();
-	  int z;
-	  for (z=0; z<BUFFERSIZE; z++) {
-	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]);
-	    gtrans = g[z] + (fraction1024[sampbufptr] * g_delta[z]);
-	    btrans = b[z] + (fraction1024[sampbufptr] * b_delta[z]);
-// 	    Serial.print(r[z]);
-// 	    Serial.print(";");
-	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
-	    outbuffer[z+1] = pixel;
-	  }
-	  outbuffer[0] = 0;
-	  controller_start();	 
-	  Serial.print("shft");
-	  delay(5);
-}
-
-static void interpolate_buffer_decay()
-{
-	int i;
-	int rtrans, gtrans, btrans;
-	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-	    rtrans0 = outbuffer[i] >> 24;
-	    gtrans0 = (outbuffer[i] & 0x00ff0000) >> 16;
-	    btrans0 = (outbuffer[i] & 0x0000ff00) >> 8;
-	    rtrans1 = outbuffer[i+BUFFERSIZE] >> 24;
-	    gtrans1 = (outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16;
-	    btrans1 = (outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8;
-	    rtrans = ((rtrans0/4) + (rtrans1/4)) + (rtrans1/2);
-	    gtrans = ((gtrans0/4) + (gtrans1/4)) + (gtrans1/2);
-	    btrans = ((btrans0/4) + (btrans1/4)) + (btrans1/2);
-	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
-	}
-	Serial.print("t.");
-	decaycounter++;
-}
-
-static void interpolate_buffer_step() {}
-
-float Hue_2_RGB( float v1, float v2, float vH )             //Function Hue_2_RGB
-{
+float Hue_2_RGB( float v1, float v2, float vH ) {
   if ( vH < 0 ) 
     vH += 1;
   if ( vH > 1 ) 
@@ -265,8 +153,8 @@ float Hue_2_RGB( float v1, float v2, float vH )             //Function Hue_2_RGB
   return ( v1 );
 }
 
-void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval)
-{
+// HSL color function that is was used for soundpuddle 2012-2013. Outputs whiter and more pastel colors, due to HSL space.
+void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval) {
   if (H < 0) {H = 0;}
   else if (H > 1) {
     while (H>1) {H = H - 1;}
@@ -298,28 +186,25 @@ void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval)
   }
 }
 
-//This function is tested good at Hackerspace, 2014-08-10. Modified from Lumenexus code
+//This function is tested good at Hackerspace, 2014-08-10. Modified from Lumenexus code.
 void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue) {
   float red;
   float green;
   float blue;
-  while (h > 1.0) {h = h- 1.0;};
+  while (h > 1.0) {h = h - 1.0;}
   while (h < 0.0) {h = h + 1.0;}
-  while (v > 1.0) {v = v - 1.0;};
-  while (v < 0.0) {v = v+ 1.0;}
+  while (v > 1.0) {v = v - 1.0;}
+  while (v < 0.0) {v = v + 1.0;}
   float hue    = h;
   float sat    = s;
   float val    = v;
-
   if (sat > 0.0) {
     hue *= 6.0;      // sector 0 to 5
     uint32_t sextant = floorf(hue);;
     float fract = hue - sextant;      // fractional part of h
-
     float p = val * ( 1 - sat );
     float q = val * ( 1 - sat * fract );
     float t = val * ( 1 - sat * ( 1 - fract ) );
-
     switch(sextant) {
       case 0:
         red = val;
@@ -351,7 +236,6 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
         green = p;
         blue = q;
         break;
-	
     }
   }
   // The LPD8806 only has 7-bit PWM, so the R,G,B channel maximums are 127
@@ -360,8 +244,7 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
   Bvalue = (uint8_t)(blue*127.0);
 }
 
-void genhsvtable(float hue_offset)
-{
+void genhsvtable(float hue_offset) {
   int i = 0;
   float Rval, Gval, Bval;
   uint8_t Rvalue, Gvalue, Bvalue;
@@ -413,8 +296,119 @@ void genhsvtable(float hue_offset)
   }
 }
 
-void setup()
-{
+void controller_wait_ready() {
+	while (REGISTER(HWMULTISPIBASE,0)!=0);
+}
+
+void controller_start() {
+	REGISTER(HWMULTISPIBASE,0)=1;
+}
+
+void dumpdata() {
+    int i;
+	for (i=0;i<FFT_POINTS/2;i++) {
+		Serial.print(myfft.in_real[i].asInt());
+		Serial.print("[");
+		Serial.print(myfft.in_im[i].asInt());
+		Serial.print("]");
+		Serial.print("what's up!");
+		Serial.print(" ");
+	}
+	Serial.println();
+}
+
+static void shift_buffer() {
+	int i;
+	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+		outbuffer[i+BUFFERSIZE] = outbuffer[i];
+	}
+}
+
+// Implements interpolation that shifts outbuffer[] and writes a new LED frame
+static void interpolate_buffer_shift() {
+	  controller_wait_ready();
+	  shift_buffer();
+	  int z;
+	  for (z=0; z<BUFFERSIZE; z++) {
+	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]);
+	    gtrans = g[z] + (fraction1024[sampbufptr] * g_delta[z]);
+	    btrans = b[z] + (fraction1024[sampbufptr] * b_delta[z]);
+// 	    Serial.print(r[z]);
+// 	    Serial.print(";");
+	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+	    outbuffer[z+1] = pixel;
+	  }
+	  outbuffer[0] = 0;
+	  controller_start();	 
+	  Serial.print("shft");
+	  delay(5);
+}
+
+// Implements interpolation that averages each frame [i] with [i-buffersize]. Lower power BIN fade away more quickly.
+static void interpolate_buffer_decay() {
+	int i;
+	int rtrans, gtrans, btrans;
+	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+	    rtrans0 = outbuffer[i] >> 24;
+	    gtrans0 = (outbuffer[i] & 0x00ff0000) >> 16;
+	    btrans0 = (outbuffer[i] & 0x0000ff00) >> 8;
+	    rtrans1 = outbuffer[i+BUFFERSIZE] >> 24;
+	    gtrans1 = (outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16;
+	    btrans1 = (outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8;
+	    rtrans = ((rtrans0/4) + (rtrans1/4)) + (rtrans1/2);
+	    gtrans = ((gtrans0/4) + (gtrans1/4)) + (gtrans1/2);
+	    btrans = ((btrans0/4) + (btrans1/4)) + (btrans1/2);
+	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+	}
+	Serial.print("t.");
+	decaycounter++;
+}
+
+// Implements interpolation by adding a precalcuted step to each element in outbuffer[].
+static void interpolate_buffer_step() {
+  int i;
+  for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
+    rtrans = outbuffer_r[i] + outbuffer_r_step[i];
+    gtrans = outbuffer_g[i] + outbuffer_g_step[i];
+    btrans = outbuffer_b[i] + outbuffer_b_step[i];
+    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+  }
+  stepcounter++;
+}
+
+// FFT sample acquisition interrupt function.
+void _zpu_interrupt() {
+	if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
+		FFT_type::fixed fv;
+		FFT_type::fixed winv;
+		fv.v = ((int)(USPIDATA & 0xffff)-2047);
+		// Multiply by window
+                winv.v = window[sampbufptr];
+		//sampbuf[sampbufptr] = winv.v;
+		// Advance file
+		SPIDATA32=0;
+		fv *= winv;
+		sampbuf[sampbufptr] = fv.v;
+		/*                                    <<5    signextend
+		 000 (0) -> -1            -2048 800h  10000h
+		 fff (4095) -> +1          2047 7ffh  0FFE0h
+		 800 (2048) -> Zero        0    0h    00000h
+		 */
+		//USPIDATA16=0; // Start readingUSPIDATA16=0 next sample
+		sampbufptr++;
+// 		samp_counter++;
+		if (sampbufptr==SAMPLE_BUFFER_SIZE) {
+			samp_done = 1;
+			sampbufptr = 0;
+                }
+	}
+	
+	USPIDATA16=(ADC_channel<<11); // Start reading next sample (the first number here controls the ADC channel)
+
+	TMR0CTL &= ~(BIT(TCTLIF));
+}
+
+void setup() {
 	sampbufptr=0;
 	samp_done = 0;
 
@@ -486,8 +480,6 @@ unsigned timingbuf[16];
 void loop()
 {
 	int i,z;
-	static int run=0;
-	int timingpos=0;
 
 	if (samp_done == 0) {
 	  controller_wait_ready();
@@ -502,7 +494,9 @@ void loop()
 	      }
 	  }
 	  else if (STEPINTERPOLATION == 1) {
-	    interpolate_buffer_step();
+	    if (stepcounter < stepcount) {
+	      interpolate_buffer_step();
+	    }
 	  }
 	  else if (NOINTERPOLATION == 1) {}
 	}
@@ -513,7 +507,8 @@ void loop()
 		  myfft.in_im[i].v=0;
 	  }
 	  samp_done=0;
-	  decaycounter=0;
+	  decaycounter=0; // counter used to limit decay interpolation function
+	  stepcounter=0; // counter used to limit step interpolation function
 	  myfft.doFFT();
 	  controller_wait_ready();
 	  shift_buffer();
@@ -540,8 +535,6 @@ void loop()
 	  // Initiate SPI transctions for LED output
 	  outbuffer[0] = 0;
 	  controller_start();
-	  new_frame = 0;
-	  interpolate_frame = 0;
 	  if (STEPINTERPOLATION == 1) {
 	    //Unwrap the R,G,B values to usage by an interpolation function
 	    for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
@@ -552,6 +545,9 @@ void loop()
 	      outbuffer_g_delta[i] = ((outbuffer[i-BUFFERSIZE] & 0x00ff0000) >> 16) - outbuffer_g[i];
 	      outbuffer_b_delta[i] = ((outbuffer[i-BUFFERSIZE] & 0x0000ff00) >> 8) - outbuffer_b[i];
 	      outbuffer_r_step[i] = outbuffer_r_delta[i]/stepcount;
+	      outbuffer_g_step[i] = outbuffer_g_delta[i]/stepcount;
+	      outbuffer_b_step[i] = outbuffer_b_delta[i]/stepcount;
+	      stepcounter = 0;
 	    }
 	  }
 	  Serial.print(millis());
