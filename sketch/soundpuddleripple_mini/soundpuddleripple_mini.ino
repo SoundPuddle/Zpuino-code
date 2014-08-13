@@ -13,6 +13,28 @@
 /* Gain */
 fp32_16_16 gain = 5.0;
 
+// Specifiy FFT and LED buffer sizes
+#define BUFFERSIZE 24
+#define NUMBUFFERS 40
+
+// Specify which interpolation functions to use
+int step_interpolation = 0;
+int decay_interpolation = 1;
+int no_interpolation = 0;
+int shift_interpolation = 0;
+
+int shiftdelay = 25; // delay in mS to slow down the shift interpolation function
+
+// Specifiy interpolation function variables
+#define stepcount 3
+
+// HSV color space controls
+float hue_offset = 0.9; // phase shift for the HSV function (range 0.00-0.99)
+float rgain = 1.0; // red channel gain for the HSV color generation function
+float ggain = 0.8; // gree channel gain for the HSV color generation function
+float bgain = 1.1; // blue channel gain for the HSV color generation function
+
+// ADC pin and channel definition
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
@@ -36,25 +58,6 @@ fp32_16_16 gain = 5.0;
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
-// Specifiy FFT and LED buffer sizes
-#define BUFFERSIZE 24
-#define NUMBUFFERS 40
-
-// Specify which interpolation functions to use
-#define STEPINTERPOLATION 0
-#define DECAYINTERPOLATION 1
-#define NOINTERPOLATION 0
-#define SHIFTINTERPOLATION 0
-
-// Specifiy interpolation function variables
-#define stepcount 3
-
-// HSV color space controls
-float hue_offset = 0.6; // phase shift for the HSV function (range 0.00-0.99)
-float rgain = 1; // red channel gain for the HSV color generation function
-float ggain = 0.75; // gree channel gain for the HSV color generation function
-float bgain = 1; // blue channel gain for the HSV color generation function
-
 unsigned fftbuffermap[BUFFERSIZE]= {92,87,82,77,73,69,65,61,58,54,51,48,46,43,41,38,36,34,30,29,27,25,24};
 
 typedef FFT_1024 FFT_type;
@@ -71,9 +74,9 @@ extern void printhex(unsigned int c);
 
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
 unsigned outbuffer_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_r[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_g[1 + (NUMBUFFERS*BUFFERSIZE) ];
-unsigned outbuffer_b[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_r[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_g[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed outbuffer_b[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
@@ -82,21 +85,18 @@ signed outbuffer_g_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_b_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned bin_val_old[1 + BUFFERSIZE ];
 unsigned bin_val_new[1 + BUFFERSIZE ];
-unsigned r_old[1 + (BUFFERSIZE) ];
-unsigned g_old[1 + (BUFFERSIZE) ];
-unsigned b_old[1 + (BUFFERSIZE) ];
-unsigned r_new[1 + (BUFFERSIZE) ];
-unsigned g_new[1 + (BUFFERSIZE) ];
-unsigned b_new[1 + (BUFFERSIZE) ];
-unsigned rgb_new[1 + (BUFFERSIZE) ];
-unsigned rgb_old[1 + (BUFFERSIZE) ];
-int r_delta[1 + (BUFFERSIZE) ];
-int g_delta[1 + (BUFFERSIZE) ];
-int b_delta[1 + (BUFFERSIZE) ];
-unsigned r[1 + (BUFFERSIZE) ];
-unsigned g[1 + (BUFFERSIZE) ];
-unsigned b[1 + (BUFFERSIZE) ];
-unsigned rtrans,gtrans,btrans,rtrans0,gtrans0,btrans0,rtrans1,gtrans1,btrans1;
+signed r_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed g_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed b_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned rgb_new[1 + (NUMBUFFERS*BUFFERSIZE) ];
+unsigned rgb_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed r[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed g[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed b[1 + (NUMBUFFERS*BUFFERSIZE) ];
+signed rtrans,gtrans,btrans,rtrans0,gtrans0,btrans0,rtrans1,gtrans1,btrans1;
 float r_stepsize, g_stepsize, b_stepsize;
 float fraction1024[1024];
 unsigned int interpolationcounter;
@@ -248,22 +248,22 @@ void genhsvtable(float hue_offset) {
   int i = 0;
   float Rval, Gval, Bval;
   uint8_t Rvalue, Gvalue, Bvalue;
-  delay(2000);
+  delay(500);
   for (i=0;i<256;i++) {
-    hue = (((float)i)/255)+hue_offset; //Chosen value for Mark's performnce in reds
-    hsvalue = (((float)i)-5)/255;
+    hue = (((float)i)/200)+hue_offset; //Chosen value for Mark's performnce in reds
+    hsvalue = (((float)i)-10)/255;
     if (hue < 0) {hue = 0;}
     if (hsvalue < 0) {hsvalue = 0;}
     HSL( (hue), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
-    Serial.print(hue);
-    Serial.print(".;");
-    Serial.print(hsvalue);
-    Serial.print("----");
-    Serial.print("----");
+//     Serial.print(hue);
+//     Serial.print(".;");
+//     Serial.print(hsvalue);
+//     Serial.print("----");
+//     Serial.print("----");
     hsv2rgb((hue), 0.99, hsvalue,Rvalue,Gvalue,Bvalue);
-//     Rval = Rval * rgain; //swapping channels to fix the mapping
-//     Gval = Gval * ggain;
-//     Bval = Bval * bgain;
+    Rvalue = Rvalue * rgain;
+    Gvalue = Gvalue * ggain;
+    Bvalue = Bvalue * bgain;
     unsigned ur = (unsigned int)Rvalue;
     unsigned ug = (unsigned int)Gvalue;
     unsigned ub = (unsigned int)Bvalue;
@@ -275,12 +275,13 @@ void genhsvtable(float hue_offset) {
 //     Serial.print(ug);
 //     Serial.print(".;");
 //     Serial.print(ub);
-//     Serial.print("----");
-//     Serial.print(ur);
-//     Serial.print(".");
-//     Serial.print(ug);
-//     Serial.print(".");
-//     Serial.print(ub);
+    Serial.print("----");
+    Serial.print(ur);
+    Serial.print(".");
+    Serial.print(ug);
+    Serial.print(".");
+    Serial.print(ub);
+    // The RGB channels are in the order GRB on the soundpuddle LPD8806 strips
     unsigned pixel = ( ((ur|0x80) << 16) | ((ug|0x80) << 8) | (ub|0x80) ) << 8;
     hsvtable[i] = pixel;
 //     Serial.print(Rvalue);
@@ -340,8 +341,7 @@ static void interpolate_buffer_shift() {
 	  }
 	  outbuffer[0] = 0;
 	  controller_start();	 
-	  Serial.print("shft");
-	  delay(5);
+	  Serial.print("s");
 }
 
 // Implements interpolation that averages each frame [i] with [i-buffersize]. Lower power BIN fade away more quickly.
@@ -349,16 +349,25 @@ static void interpolate_buffer_decay() {
 	int i;
 	int rtrans, gtrans, btrans;
 	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-	    rtrans0 = outbuffer[i] >> 24;
-	    gtrans0 = (outbuffer[i] & 0x00ff0000) >> 16;
-	    btrans0 = (outbuffer[i] & 0x0000ff00) >> 8;
-	    rtrans1 = outbuffer[i+BUFFERSIZE] >> 24;
-	    gtrans1 = (outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16;
-	    btrans1 = (outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8;
-	    rtrans = ((rtrans0/4) + (rtrans1/4)) + (rtrans1/2);
-	    gtrans = ((gtrans0/4) + (gtrans1/4)) + (gtrans1/2);
-	    btrans = ((btrans0/4) + (btrans1/4)) + (btrans1/2);
+	    rtrans0 = (outbuffer[i] >> 24) - 128;
+	    gtrans0 = ((outbuffer[i] & 0x00ff0000) >> 16) - 128;
+	    btrans0 = ((outbuffer[i] & 0x0000ff00) >> 8) - 128;
+	    rtrans1 = (outbuffer[i+BUFFERSIZE] >> 24) - 128;
+	    gtrans1 = ((outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16) - 128;
+	    btrans1 = ((outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8) - 128;
+	    rtrans = ((rtrans1/8) + (rtrans0/8) + (rtrans0/4) + (rtrans0/2));
+	    gtrans = ((gtrans1/8) + (gtrans0/8) + (gtrans0/4) + (gtrans0/2));
+	    btrans = ((btrans1/8) + (btrans0/8) + (btrans0/4) + (btrans0/2));
 	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+// 	    if (i == 3)
+// 	    {
+// 	      Serial.print(rtrans0);
+// 	      Serial.print(".");
+// 	      Serial.print(rtrans1);
+// 	      Serial.print(".");
+// 	      Serial.print(rtrans);
+// 	      Serial.print("_");
+// 	    }
 	}
 	Serial.print("t.");
 	decaycounter++;
@@ -366,13 +375,36 @@ static void interpolate_buffer_decay() {
 
 // Implements interpolation by adding a precalcuted step to each element in outbuffer[].
 static void interpolate_buffer_step() {
+  controller_wait_ready();
   int i;
+  int rtrans, gtrans, btrans;
   for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-    rtrans = outbuffer_r[i] + outbuffer_r_step[i];
-    gtrans = outbuffer_g[i] + outbuffer_g_step[i];
-    btrans = outbuffer_b[i] + outbuffer_b_step[i];
-    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+    rtrans = r[i] + r_step[i];
+    gtrans = g[i] + g_step[i];
+    btrans = b[i] + b_step[i];
+    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+    outbuffer[i+1] = pixel;
+//     if (i == 20) {
+//       Serial.print("_");
+//       Serial.print(rtrans);
+//       Serial.print("~");
+//       Serial.print(r_step[i]);
+//       }
   }
+  outbuffer[0] = 0;
+  controller_start();
+  Serial.print("f");
+
+//     outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
+//     if (i = 1)
+//     {
+//         Serial.print(outbuffer_r[i]);
+// 	Serial.print(".");
+// 	Serial.print(rtrans);
+// 	Serial.print("_");
+//     }
+//   }
+
   stepcounter++;
 }
 
@@ -480,25 +512,26 @@ unsigned timingbuf[16];
 void loop()
 {
 	int i,z;
-
 	if (samp_done == 0) {
 	  controller_wait_ready();
-	  if (SHIFTINTERPOLATION == 1) {
+	  if (shift_interpolation == 1) {
 	    interpolate_buffer_shift();
+	    delay(shiftdelay);
 	  }
-	  else if (DECAYINTERPOLATION == 1) {
+	  else if (decay_interpolation == 1) {
 	    if (decaycounter < 1)
 	      {
 		interpolate_buffer_decay();
 		controller_start();
 	      }
 	  }
-	  else if (STEPINTERPOLATION == 1) {
+	  else if (step_interpolation == 1) {
 	    if (stepcounter < stepcount) {
 	      interpolate_buffer_step();
+	      controller_start();
 	    }
 	  }
-	  else if (NOINTERPOLATION == 1) {}
+	  else if (no_interpolation == 1) {}
 	}
 	
 	if (samp_done == 1) {
@@ -506,6 +539,7 @@ void loop()
 		  myfft.in_real[i].v= sampbuf[i];
 		  myfft.in_im[i].v=0;
 	  }
+	  Serial.print("|");
 	  samp_done=0;
 	  decaycounter=0; // counter used to limit decay interpolation function
 	  stepcounter=0; // counter used to limit step interpolation function
@@ -535,35 +569,59 @@ void loop()
 	  // Initiate SPI transctions for LED output
 	  outbuffer[0] = 0;
 	  controller_start();
-	  if (STEPINTERPOLATION == 1) {
+	  if (step_interpolation == 1) {
+// 	    Serial.print("step");
 	    //Unwrap the R,G,B values to usage by an interpolation function
 	    for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-	      outbuffer_r[i] = outbuffer[i] >> 24;
-	      outbuffer_g[i] = (outbuffer[i] & 0x00ff0000) >> 16;
-	      outbuffer_b[i] = (outbuffer[i] & 0x0000ff00) >> 8;
-	      outbuffer_r_delta[i] = (outbuffer[i-BUFFERSIZE] >> 24) - outbuffer_r[i];
-	      outbuffer_g_delta[i] = ((outbuffer[i-BUFFERSIZE] & 0x00ff0000) >> 16) - outbuffer_g[i];
-	      outbuffer_b_delta[i] = ((outbuffer[i-BUFFERSIZE] & 0x0000ff00) >> 8) - outbuffer_b[i];
-	      outbuffer_r_step[i] = outbuffer_r_delta[i]/stepcount;
-	      outbuffer_g_step[i] = outbuffer_g_delta[i]/stepcount;
-	      outbuffer_b_step[i] = outbuffer_b_delta[i]/stepcount;
-	      stepcounter = 0;
+	      rgb_old[i] = rgb_new[i];
+	      rgb_new[i] = outbuffer[i+1];
+	      r_delta[i] = ((rgb_new[i] >> 24)-128) - ((rgb_old[i] >> 24)-128);
+	      signed rtrans99 = r_delta[i];
+	      g_delta[i] = (((rgb_new[i] & 0x00ff0000) >> 16)-128) - (((rgb_old[i] & 0x00ff0000) >> 16)-128);
+	      b_delta[i] = (((rgb_new[i] & 0x0000ff00) >> 8)-128) - (((rgb_old[i] & 0x0000ff00) >> 8)-128);
+	      r[i] = ((rgb_old[i]) >> 24)-128;
+	      g[i] = ((rgb_old[i] & 0x00ff0000) >> 16)-128;
+	      b[i] = ((rgb_old[i] & 0x0000ff00) >> 8)-128;
+	      r_step[i] = r_delta[i]/4;
+	      g_step[i] = g_delta[i]/4;
+	      b_step[i] = b_delta[i]/4;
+// 	      if (i == 20) {
+// 		Serial.print("_");
+// 		Serial.print(r[i]);
+// 		Serial.print("~");
+// 		Serial.print(rtrans99);
+// 		Serial.print("~");
+// 		Serial.print(r_step[i]);
+// 		}
 	    }
 	  }
-	  Serial.print(millis());
 	  //Performance FFT-window calculations necesary for the shift interpolation function
-	  if (SHIFTINTERPOLATION == 1) {
+	  if (shift_interpolation == 1) {
 	    for (z=0; z<BUFFERSIZE; z++) {
 	    rgb_old[z] = rgb_new[z];
-	    rgb_new[z] = hsvtable[bin_val_new[z]];
-	    r_delta[z] = (rgb_new[z] >> 24) - (rgb_old[z] >> 24);
-	    g_delta[z] = ((rgb_new[z] & 0x00ff0000) >> 16) - ((rgb_old[z] & 0x00ff0000) >> 16);
-	    b_delta[z] = ((rgb_new[z] & 0x0000ff00) >> 8) - ((rgb_old[z] & 0x0000ff00) >> 8);
-	    r[z] = rgb_old[z] >> 24;
-	    g[z] = (rgb_old[z] & 0x00ff0000) >> 16;
-	    b[z] = (rgb_old[z] & 0x0000ff00) >> 8;
+	    rgb_new[z] = outbuffer[z+1];
+	    r_delta[z] = ((rgb_new[z] >> 24)-128) - ((rgb_old[z] >> 24)-128);
+	    g_delta[z] = (((rgb_new[z] & 0x00ff0000) >> 16)-128) - (((rgb_old[z] & 0x00ff0000) >> 16)-128);
+	    b_delta[z] = (((rgb_new[z] & 0x0000ff00) >> 8)-128) - (((rgb_old[z] & 0x0000ff00) >> 8)-128);
+	    r[z] = ((rgb_old[z]) >> 24)-128;
+	    g[z] = ((rgb_old[z] & 0x00ff0000) >> 16)-128;
+	    b[z] = ((rgb_old[z] & 0x0000ff00) >> 8)-128;
+	    r_step[z] = r_delta[z]/3;
+	    g_step[z] = g_delta[z]/3;
+	    b_step[z] = b_delta[z]/3;
+	    if (z == 20) {
+		Serial.print("_");
+		Serial.print(r[z]);
+// 		Serial.print(".");
+// 		Serial.print(r_delta[z]);
+// 		signed r_deltaprime = r_delta[z]/4;
+		Serial.print(".");
+ 		Serial.print(r_step[z]);
+	      }
 	    }
 	  }
+// 	  Serial.print("|");
+// 	  Serial.print(millis());
 	  Serial.println();
 	}
 }
