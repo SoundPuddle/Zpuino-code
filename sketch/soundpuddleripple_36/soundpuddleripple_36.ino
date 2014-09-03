@@ -4,8 +4,8 @@
 #include <math.h>
 #include <stdio.h>
 //#include "fixedpoint.h"
-//#define SAMPLING_FREQ 18000
-#define SAMPLING_FREQ 21901
+#define SAMPLING_FREQ 16145
+//#define SAMPLING_FREQ 21901
 //#define SAMPLING_FREQ 44100
 
 /* Apply a low-pass filter to FFT output */
@@ -20,20 +20,22 @@ fp32_16_16 gain = 5.0;
 // Specify which interpolation functions to use
 int step_interpolation = 0;
 int decay_interpolation = 0;
-int no_interpolation = 1;
-int shift_interpolation = 0;
+int no_interpolation = 0;
+int shift_interpolation = 1;
 
-int shiftdelay = 25; // delay in mS to slow down the shift interpolation function
+int shiftdelay = 1; // delay in mS to slow down the shift interpolation function
 
 // Specifiy interpolation function variables
 #define stepcount 3
 
 // HSV color space controls
 float hue_offset = 0.9; // phase shift for the HSV function (range 0.00-0.99)
+float hsvalue_floor = 1; // linear offest for the value of the HSV color generation function
 float rgain = 1.0; // red channel gain for the HSV color generation function
 float ggain = 0.8; // gree channel gain for the HSV color generation function
 float bgain = 1.1; // blue channel gain for the HSV color generation function
-float rgbgain = 5; // global rgb channel gain for the HSV color generation function
+float rgbgain = 1.1; // global rgb channel gain for the HSV color generation function
+float adc_gain = 2.5;
 
 // ADC pin and channel definition
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
@@ -59,7 +61,7 @@ float rgbgain = 5; // global rgb channel gain for the HSV color generation funct
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
-unsigned fftbuffermap[BUFFERSIZE]= {108,107,106,105,104,103,102,101,100,99,98,97, 92,87,82,77,73,69,65,61,58,54,51,48,46,43,41,38,36,34,30,29,27,25,24};
+unsigned fftbuffermap[BUFFERSIZE]= {16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,105,111,118,125};
 
 typedef FFT_1024 FFT_type;
 
@@ -250,7 +252,7 @@ void genhsvtable(float hue_offset) {
   delay(500);
   for (i=0;i<256;i++) {
     hue = (((float)i)/200)+hue_offset; //Chosen value for Mark's performnce in reds
-    hsvalue = (((float)i)-10)/255;
+    hsvalue = (((float)i)-(float)hsvalue_floor)/255;
     if (hue < 0) {hue = 0;}
     if (hsvalue < 0) {hsvalue = 0;}
     HSL( (hue), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
@@ -354,9 +356,9 @@ static void interpolate_buffer_decay() {
 	    rtrans1 = (outbuffer[i+BUFFERSIZE] >> 24) - 128;
 	    gtrans1 = ((outbuffer[i+BUFFERSIZE] & 0x00ff0000) >> 16) - 128;
 	    btrans1 = ((outbuffer[i+BUFFERSIZE] & 0x0000ff00) >> 8) - 128;
-	    rtrans = ((rtrans1/8) + (rtrans0/8) + (rtrans0/4) + (rtrans0/2));
-	    gtrans = ((gtrans1/8) + (gtrans0/8) + (gtrans0/4) + (gtrans0/2));
-	    btrans = ((btrans1/8) + (btrans0/8) + (btrans0/4) + (btrans0/2));
+	    rtrans = ((rtrans1/16) + (rtrans0/16) + (rtrans0/8) + (rtrans0/4) + (rtrans0/2));
+	    gtrans = ((gtrans1/16) + (gtrans0/16) + (gtrans0/8) + (gtrans0/4) + (gtrans0/2));
+	    btrans = ((btrans1/16) + (btrans0/16) + (btrans0/8) + (btrans0/4) + (btrans0/2));
 	    outbuffer[i+BUFFERSIZE] = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
 // 	    if (i == 3)
 // 	    {
@@ -419,7 +421,7 @@ void _zpu_interrupt() {
 		// Advance file
 		SPIDATA32=0;
 		fv *= winv;
-		sampbuf[sampbufptr] = fv.v;
+		sampbuf[sampbufptr] = fv.v * adc_gain;
 		/*                                    <<5    signextend
 		 000 (0) -> -1            -2048 800h  10000h
 		 fff (4095) -> +1          2047 7ffh  0FFE0h
@@ -434,7 +436,7 @@ void _zpu_interrupt() {
                 }
 	}
 	
-	USPIDATA16=(ADC_channel<<11); // Start reading next sample (the first number here controls the ADC channel)
+	USPIDATA16=(ADC_channel<<11); // Start reading next sample
 
 	TMR0CTL &= ~(BIT(TCTLIF));
 }
@@ -499,6 +501,10 @@ void setup() {
 	  Serial.print(fraction1024[n]);
 	  Serial.print(";");
 	}
+	int i;
+	for (i = 0; i< (1 + (NUMBUFFERS*BUFFERSIZE)); i++) {
+	  outbuffer[i] = 0;
+	}
 
 #if 0
 	init_rgb();
@@ -515,7 +521,7 @@ void loop()
 	  controller_wait_ready();
 	  if (shift_interpolation == 1) {
 	    interpolate_buffer_shift();
-	    delay(shiftdelay);
+	    //delay(shiftdelay);
 	  }
 	  else if (decay_interpolation == 1) {
 	    if (decaycounter < 1)
@@ -538,7 +544,7 @@ void loop()
 		  myfft.in_real[i].v= sampbuf[i];
 		  myfft.in_im[i].v=0;
 	  }
-	  Serial.print("|");
+	  //Serial.print("|");
 	  samp_done=0;
 	  decaycounter=0; // counter used to limit decay interpolation function
 	  stepcounter=0; // counter used to limit step interpolation function
@@ -557,6 +563,8 @@ void loop()
 	    v.v = fsqrt16(v.asNative());
 	    // Convert to HSV
 	    unsigned val = v.v;
+// 	    Serial.print(val);
+// 	    Serial.print(",");
 	    val = val/255;
 	    if (val>0xff) {val=0xff;}
 	    bin_val_old[z] = bin_val_new[z];
@@ -609,18 +617,18 @@ void loop()
 	    g_step[z] = g_delta[z]/3;
 	    b_step[z] = b_delta[z]/3;
 	    if (z == 20) {
-		Serial.print("_");
-		Serial.print(r[z]);
+// 		Serial.print("_");
+// 		Serial.print(r[z]);
 // 		Serial.print(".");
 // 		Serial.print(r_delta[z]);
 // 		signed r_deltaprime = r_delta[z]/4;
-		Serial.print(".");
- 		Serial.print(r_step[z]);
+// 		Serial.print(".");
+//  		Serial.print(r_step[z]);
 	      }
 	    }
 	  }
-// 	  Serial.print("|");
-// 	  Serial.print(millis());
+ 	  Serial.print(";");
+ 	  Serial.print(millis());
 	  Serial.println();
 	}
 }
