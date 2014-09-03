@@ -19,9 +19,9 @@ fp32_16_16 gain = 5.0;
 
 // Specify which interpolation functions to use
 int step_interpolation = 0;
-int decay_interpolation = 1;
+int decay_interpolation = 0;
 int no_interpolation = 0;
-int shift_interpolation = 0;
+int shift_interpolation = 1;
 
 int shiftdelay = 25; // delay in mS to slow down the shift interpolation function
 
