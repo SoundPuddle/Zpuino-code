@@ -39,7 +39,7 @@ float bgain = 1.1; // blue channel gain for the HSV color generation function
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
 #define ADC_CS  SP_MK2_ADCCS_PIN
-#define ADC_channel 0x02 // specify the ADC channel
+#define ADC_channel 0x01 // specify the ADC channel
 
 #define print_fft_vals 0
 
