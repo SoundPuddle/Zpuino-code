@@ -30,28 +30,7 @@ int shiftdelay = 1; // delay in mS to slow down the shift interpolation function
 #define stepcount 3
 
 // HSV color space controls
-/* NOCO Maker Faire starting
-// float hue_offset = 0.9; // phase shift for the HSV function (range 0.00-0.99)
-// float hue_limiter = 0.25;
-// float hue_multiplier = 1.0;
-// float hsvalue_max = 0.2;
-// float hsvalue_floor = 3; // linear offest for the value of the HSV color generation function
-// float rgain = 1.35; // red channel gain for the HSV color generation function
-// float ggain = 1.0; // gree channel gain for the HSV color generation function
-// float bgain = 1.0; // blue cfloat hue_offset = 0.9; // phase shift for the HSV function (range 0.00-0.99)
-float hue_limiter = 0.25;
-float hue_multiplier = 1.0;
-float hsvalue_max = 0.2;
-float hsvalue_floor = 3; // linear offest for the value of the HSV color generation function
-float rgain = 1.35; // red channel gain for the HSV color generation function
-float ggain = 1.0; // gree channel gain for the HSV color generation function
-float bgain = 1.0; // blue channel gain for the HSV color generation function
-float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
-int adc_gain = 3.5;hannel gain for the HSV color generation function
-// float rgbgain = 1.1; // global rgb channel gain for the HSV color generation function
-// int adc_gain = 3.5;
-*/
-float hue_offset = 0.7; // phase shift for the HSV function (range 0.00-0.99)
+float hue_offset = 0.72; // phase shift for the HSV function (range 0.00-0.99)
 float hue_limiter = 0.25;
 int hue_divisor = 240; // Nominal value is 255
 float hue_multiplier = 1.0;
@@ -63,6 +42,10 @@ float bgain = 1.0; // blue channel gain for the HSV color generation function
 float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
 int adc_gain = 5.5;
 int clamp_value = 29;
+
+// FHT > LED space mapping control
+int spin_delay = 1; // how long does the system wait before spinning another spoke, in unit mS
+int spin_position; // index for the LED spoke offset, akin to theta for a sin wave (varies from 0 to BUFFERSIZE)
 
 // ADC pin and channel definition
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
@@ -600,6 +583,7 @@ void loop()
 	  controller_wait_ready();
 	  shift_buffer();
 	  for (z=0; z<BUFFERSIZE; z++) {
+	    //i = fftbuffermap[(z+spin_position)%BUFFERSIZE];
 	    i = fftbuffermap[z];
 	    FFT_type::fixed v = myfft.in_real[i];
 	    v.v>>=2;
@@ -623,6 +607,10 @@ void loop()
 // 	    Serial.print(val);
 // 	    Serial.print(".");
 	    }
+	  spin_position++;
+	  if (spin_position > BUFFERSIZE - 1) {
+	    spin_position = 0;
+	  }
 	  // Initiate SPI transctions for LED output
 	  outbuffer[0] = 0;
 	  controller_start();
