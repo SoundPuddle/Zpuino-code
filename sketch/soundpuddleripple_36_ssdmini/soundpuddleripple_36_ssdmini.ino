@@ -24,7 +24,7 @@ int decay_interpolation = 0;
 int no_interpolation = 0;
 int shift_interpolation = 1;
 
-int shiftdelay = 10; // delay in mS to slow down the shift interpolation function
+int shiftdelay = 8; // delay in mS to slow down the shift interpolation function
 
 // Specifiy interpolation function variables
 #define stepcount 3
@@ -35,12 +35,12 @@ float hue_offset = 0.1; // phase shift for the HSV function (range 0.00-0.99)
 int hue_divisor = 314; // Nominal value is 255
 float hue_multiplier = 1.0;
 float hsvalue_max = 0.22;
-float hsvalue_floor = 3; // linear offest for the value of the HSV color generation function
+float hsvalue_floor = 5; // linear offest for the value of the HSV color generation function
 float rgain = 1.0; // red channel gain for the HSV color generation function
 float ggain = 1.0; // gree channel gain for the HSV color generation function
 float bgain = 1.0; // blue channel gain for the HSV color generation function
 float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
-int adc_gain = 3.14;
+int adc_gain = 2.71;
 int clamp_value = 127;
 
 // FHT > LED space mapping control
@@ -52,7 +52,7 @@ int spin_position; // index for the LED spoke offset, akin to theta for a sin wa
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
 #define ADC_CS  SP_MK2_ADCCS_PIN
-#define ADC_channel 0x01 // specify the ADC channel
+#define ADC_channel 0x02 // specify the ADC channel
 
 #define print_fft_vals 0
 
