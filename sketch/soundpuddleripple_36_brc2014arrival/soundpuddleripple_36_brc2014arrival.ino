@@ -33,7 +33,7 @@ float hue_offset = 0.9; // phase shift for the HSV function (range 0.00-0.99)
 float rgain = 1.0; // red channel gain for the HSV color generation function
 float ggain = 0.8; // gree channel gain for the HSV color generation function
 float bgain = 1.1; // blue channel gain for the HSV color generation function
-float rgbgain = 5; // global rgb channel gain for the HSV color generation function
+float rgbgain = 2; // global rgb channel gain for the HSV color generation function
 
 // ADC pin and channel definition
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
