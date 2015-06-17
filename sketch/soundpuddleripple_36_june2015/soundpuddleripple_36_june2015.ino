@@ -5,9 +5,7 @@
 #include <stdio.h>
 //#include "fixedpoint.h"
 //#define SAMPLING_FREQ 12000
-//#define SAMPLING_FREQ 12582 //avr setting for C4 - B6
-#define SAMPLING_FREQ 16518 //avr setting for G3 - F#6
-//#define SAMPLING_FREQ 16422 //avr setting for C3 - B5
+#define SAMPLING_FREQ 12110
 //#define SAMPLING_FREQ 21901
 //#define SAMPLING_FREQ 44100
 
@@ -32,19 +30,18 @@ int shiftdelay = 1; // delay in mS to slow down the shift interpolation function
 #define stepcount 3
 
 // HSV color space controls
-float hue_offset = 0.7; // phase shift for the HSV function (range 0.00-0.99)
+float hue_offset = 0.72; // phase shift for the HSV function (range 0.00-0.99)
 float hue_limiter = 0.25;
 int hue_divisor = 240; // Nominal value is 255
 float hue_multiplier = 1.0;
-float hsvalue_max = 0.22;
+float hsvalue_max = 0.18;
 float hsvalue_floor = 2; // linear offest for the value of the HSV color generation function
 float rgain = 1.0; // red channel gain for the HSV color generation function
-float ggain = 0.9; // gree channel gain for the HSV color generation function
-float bgain = 0.9; // blue channel gain for the HSV color generation function
+float ggain = 1.0; // gree channel gain for the HSV color generation function
+float bgain = 1.0; // blue channel gain for the HSV color generation function
 float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
-int adc_gain = 4.20;
-int clamp_value = 32;
-int rgb_total = 32 * 3; //maximum sum of the r, g, b channels
+int adc_gain = 3.14;
+int clamp_value = 29;
 
 // FHT > LED space mapping control
 int spin_delay = 1; // how long does the system wait before spinning another spoke, in unit mS
@@ -77,13 +74,9 @@ int spin_position; // index for the LED spoke offset, akin to theta for a sin wa
 //unsigned fftbuffermap[BUFFERSIZE]= {16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,105,111,118,125};
 //unsigned fftbuffermap[BUFFERSIZE]= {6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40};
 //unsigned fftbuffermap[BUFFERSIZE]={6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,27,28,30,32,34,36,38,40,43,45,48,51,54,57,61,64,68};
-//unsigned fftbuffermap[BUFFERSIZE]={14,15,16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,99,105,111};
-//unsigned fftbuffermap[BUFFERSIZE]={42,45,47,50,53,60,63,67,71,75,80,85,90,95,101,107,113,120,127,135,143,170,180,191,202,214,227,240,255,270,286,303,321}; //avr setting for C4 - B6 @ 12582
-//unsigned fftbuffermap[BUFFERSIZE]={16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,99,105,111,118,215}; //avr settings for C3 - B4 @ 16.422khz
-unsigned fftbuffermap[BUFFERSIZE]={24,25,27,28,30,32,34,36,38,40,43,45,48,51,54,57,61,64,68,72,77,81,86,91,97,102,109,122,129,137,145,154,163,173,183}; //avr settings for G3 - F#6 @ 16.5182khz
+unsigned fftbuffermap[BUFFERSIZE]={14,15,16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,99,105,111};
 //unsigned buffermapoffset[] = {32000,28000,24000,20000,18000,16000,10000,8000,5460,5100,4440,4100,3400,3400,2400,2100,1600,1570,1400,1200,1100,1000,950,850,700,600,500,400,400,350,300,200,150,100,50,0};
-float bin_gain[BUFFERSIZE]={0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.75,0.75,0.75,0.75,0.75,0.75,0.75,0.75,0.75,0.75,0.75,0.75,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0};
-//float bin_gain[BUFFERSIZE]={0.68,0.70,0.72,0.74,0.76,0.78,0.80,0.82,0.84,0.86,0.88,0.9,0.92,0.94,0.96,0.98,1.0,1.1,1.20,1.22,1.23,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.00,2.1,2.2,2.3,2.4,2.5};
+
 typedef FFT_1024 FFT_type;
 
 static FFT_type myfft;
@@ -293,14 +286,6 @@ void genhsvtable(float hue_offset) {
     unsigned ur = (unsigned int)Rvalue;
     unsigned ug = (unsigned int)Gvalue;
     unsigned ub = (unsigned int)Bvalue;
-    unsigned total = ur + ug + ub;
-    // Check to see if the total RGB brightness is going to exceed the "clamp" threshold. If so, normalize each channel lowe
-    if (total > rgb_total) {
-      float total_div = ((float)rgb_total)/((float)total);
-      ur = ((float)ur) * total_div;
-      ug = ((float)ug) * total_div;
-      ub = ((float)ub) * total_div;
-    }
     CLAMP(ur);
     CLAMP(ug);
     CLAMP(ub);
@@ -378,9 +363,9 @@ static void interpolate_buffer_shift() {
 	  //shift_buffer_subtraction();
 	  int z;
 	  for (z=0; z<BUFFERSIZE; z++) {
-	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]) * bin_gain[z];
-	    gtrans = g[z] + (fraction1024[sampbufptr] * g_delta[z]) * bin_gain[z];
-	    btrans = b[z] + (fraction1024[sampbufptr] * b_delta[z]) * bin_gain[z];
+	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]);
+	    gtrans = g[z] + (fraction1024[sampbufptr] * g_delta[z]);
+	    btrans = b[z] + (fraction1024[sampbufptr] * b_delta[z]);
 // 	    Serial.print(r[z]);
 // 	    Serial.print(";");
 	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
@@ -567,7 +552,7 @@ void loop()
 	  controller_wait_ready();
 	  if (shift_interpolation == 1) {
 	    interpolate_buffer_shift();
-	    //delay(shiftdelay);
+	    delay(shiftdelay);
 	  }
 	  else if (decay_interpolation == 1) {
 	    if (decaycounter < 1)

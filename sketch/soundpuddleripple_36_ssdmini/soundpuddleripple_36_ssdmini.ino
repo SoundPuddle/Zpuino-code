@@ -5,7 +5,7 @@
 #include <stdio.h>
 //#include "fixedpoint.h"
 //#define SAMPLING_FREQ 12000
-#define SAMPLING_FREQ 12110
+#define SAMPLING_FREQ 12576
 //#define SAMPLING_FREQ 21901
 //#define SAMPLING_FREQ 44100
 
@@ -40,7 +40,7 @@ float rgain = 1.0; // red channel gain for the HSV color generation function
 float ggain = 1.0; // gree channel gain for the HSV color generation function
 float bgain = 1.0; // blue channel gain for the HSV color generation function
 float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
-int adc_gain = 2.71;
+int adc_gain = 4.20;
 int clamp_value = 127;
 
 // FHT > LED space mapping control
@@ -71,8 +71,8 @@ int spin_position; // index for the LED spoke offset, akin to theta for a sin wa
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
-unsigned fftbuffermap[BUFFERSIZE]= {23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88};
-//unsigned fftbuffermap[BUFFERSIZE]= {24,25,27,29,30,34,36,38,41,43,46,51,54,58,61,65,69,73,77,82,87,92};
+//unsigned fftbuffermap[BUFFERSIZE]= {23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88};
+unsigned fftbuffermap[BUFFERSIZE]= {71, 75, 80, 85, 90, 95, 101, 107, 113, 120, 127, 135, 143, 170, 180, 191, 202, 214, 227, 241, 255, 270, 286, 303}; //tuned for 12.576Khz, 440Hz - 1863Hz
 //unsigned buffermapoffset[] = {32000,28000,24000,20000,18000,16000,10000,8000,5460,5100,4440,4100,3400,3400,2400,2100,1600,1570,1400,1200,1100,1000,950,850};
 
 typedef FFT_1024 FFT_type;

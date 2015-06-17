@@ -2,7 +2,7 @@
 print "Calculating optimal sample rate"
 
 maxsamplerate = 24000
-min_sample_rate = 16000
+min_sample_rate = 12000
 
 fftsize = 1024
 
