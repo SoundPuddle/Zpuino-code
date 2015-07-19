@@ -34,13 +34,13 @@ float hue_offset = 0.72; // phase shift for the HSV function (range 0.00-0.99)
 float hue_limiter = 0.25;
 int hue_divisor = 240; // Nominal value is 255
 float hue_multiplier = 1.0;
-float hsvalue_max = 0.22;
+float hsvalue_max = 0.18;
 float hsvalue_floor = 2; // linear offest for the value of the HSV color generation function
 float rgain = 1.0; // red channel gain for the HSV color generation function
 float ggain = 1.0; // gree channel gain for the HSV color generation function
 float bgain = 1.0; // blue channel gain for the HSV color generation function
 float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
-int adc_gain = 5.5;
+int adc_gain = 4.20;
 int clamp_value = 29;
 
 // FHT > LED space mapping control
