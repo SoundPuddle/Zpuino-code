@@ -1,0 +1,20 @@
+//Directions for FPGA config//
+
+Step 1 - Program the SPI flash with the SoundPuddle FPGA bit file:
+sudo ./xc3sprog -c ftdi -f papilio_pro_soundpuddle-mk2.bit
+
+Step 2 - Program the SPI flash with the SoundPuddle FPGA bin file:
+sudo ./zpuinoprogrammer -d /dev/ttyUSB1 -l -o 0 -R -b papilio_pro_soundpuddle-mk2.bin
+
+//Directions for generating a new LED mapping file//
+To copy hsv.c to a sketch directory (example):
+cp hsv.c ../sketch/soundpuddleripple/
+
+To generate the mapping.h file for the LED array buffer mapping: (from inside the mapping dir)
+perl ../utils/create-map-from-csv.pl < ../mappings/soundpuddle-mk2-ripplemapping.csv
+
+
+//Direction for depreciated HSV mapping//
+To generate the hsv.c file:
+make clean all
+./genhsvtable > hsv.c
