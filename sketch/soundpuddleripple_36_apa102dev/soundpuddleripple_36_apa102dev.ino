@@ -38,10 +38,6 @@ float rgbgain = 1.0; // global rgb channel gain for the HSV color generation fun
 int adc_gain = 3.14;
 int clamp_value = 29;
 
-// FHT > LED space mapping control
-int spin_delay = 1; // how long does the system wait before spinning another spoke, in unit mS
-int spin_position; // index for the LED spoke offset, akin to theta for a sin wave (varies from 0 to BUFFERSIZE)
-
 // ADC pin and channel definition
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
@@ -66,11 +62,7 @@ int spin_position; // index for the LED spoke offset, akin to theta for a sin wa
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
 
-//unsigned fftbuffermap[BUFFERSIZE]= {16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,105,111,118,125};
-//unsigned fftbuffermap[BUFFERSIZE]= {6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40};
-//unsigned fftbuffermap[BUFFERSIZE]={6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,27,28,30,32,34,36,38,40,43,45,48,51,54,57,61,64,68};
 unsigned fftbuffermap[BUFFERSIZE]={14,15,16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,99,105,111};
-//unsigned buffermapoffset[] = {32000,28000,24000,20000,18000,16000,10000,8000,5460,5100,4440,4100,3400,3400,2400,2100,1600,1570,1400,1200,1100,1000,950,850,700,600,500,400,400,350,300,200,150,100,50,0};
 
 typedef FFT_1024 FFT_type;
 
@@ -85,16 +77,9 @@ extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
 unsigned outbuffer[1 + (NUMBUFFERS*BUFFERSIZE) ]; // one extra, to hold 0x00000000
-unsigned outbuffer_old[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_r[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_g[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed outbuffer_b[1 + (NUMBUFFERS*BUFFERSIZE) ];
-signed outbuffer_r_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-signed outbuffer_g_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-signed outbuffer_b_delta[1 + (NUMBUFFERS*BUFFERSIZE) ];
-signed outbuffer_r_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
-signed outbuffer_g_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
-signed outbuffer_b_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
 unsigned bin_val_old[1 + BUFFERSIZE ];
 unsigned bin_val_new[1 + BUFFERSIZE ];
 signed r_step[1 + (NUMBUFFERS*BUFFERSIZE) ];
@@ -109,7 +94,6 @@ signed r[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed g[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed b[1 + (NUMBUFFERS*BUFFERSIZE) ];
 signed rtrans,gtrans,btrans,rtrans0,gtrans0,btrans0,rtrans1,gtrans1,btrans1;
-float r_stepsize, g_stepsize, b_stepsize;
 float fraction1024[1024];
 unsigned int interpolationcounter;
 unsigned int stepcounter; // keeps track of the number of interpolation steps happening within an FFT window period
@@ -247,10 +231,10 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
         break;
     }
   }
-  // The LPD8806 only has 7-bit PWM, so the R,G,B channel maximums are 127
-  Rvalue = (uint8_t)(red*127.0);
-  Gvalue = (uint8_t)(green*127.0);
-  Bvalue = (uint8_t)(blue*127.0);
+  // The APA102 only has 8-bit PWM, so the R,G,B channel maximums are 127
+  Rvalue = (uint8_t)(red*255.0);
+  Gvalue = (uint8_t)(green*255.0);
+  Bvalue = (uint8_t)(blue*255.0);
 }
 
 void genhsvtable(float hue_offset) {
@@ -294,8 +278,8 @@ void genhsvtable(float hue_offset) {
     Serial.print(ug);
     Serial.print(".");
     Serial.print(ub);
-    // The RGB channels are in the order GRB on the soundpuddle LPD8806 strips
-    unsigned pixel = ( ((ur|0x80) << 16) | ((ug|0x80) << 8) | (ub|0x80) ) << 8;
+    // The RGB channels are in the order GRB on APA102 LPD8806 strips
+    unsigned pixel = ( ((ub|0x80) << 16) | ((ug|0x80) << 8) | (ur|0x80) ) << 8;
     hsvtable[i] = pixel;
 //     Serial.print(Rvalue);
 //     Serial.print(".");
@@ -338,23 +322,10 @@ static void shift_buffer() {
 	}
 }
 
-static void shift_buffer_subtraction() {
-	int i;
-	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
-	    //outbuffer[i+BUFFERSIZE] = outbuffer[i];
-	    rtrans = ((outbuffer[i] >> 24) - 128);
-	    gtrans = (((outbuffer[i] & 0x00ff0000) >> 16) - 128);
-	    btrans = (((outbuffer[i] & 0x0000ff00) >> 8) - 128);
-	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
-	    outbuffer[i+BUFFERSIZE] = pixel;
-	}
-}
-
 // Implements interpolation that shifts outbuffer[] and writes a new LED frame
 static void interpolate_buffer_shift() {
 	  controller_wait_ready();
 	  shift_buffer();
-	  //shift_buffer_subtraction();
 	  int z;
 	  for (z=0; z<BUFFERSIZE; z++) {
 	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]);
@@ -418,21 +389,15 @@ void setup() {
 	outputPinForFunction(ADC_MOSI, IOPIN_USPI_MOSI);
 	outputPinForFunction(ADC_SCK, IOPIN_USPI_SCK);
 	inputPinForFunction(ADC_MISO, IOPIN_USPI_MISO);
-
 	/* CP1 -> 010 prescaler (4), frequency 24MHz) */
-
 	USPICTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP1)|BIT(SPICP0);
 	// Start reading immediatly */
-
 	digitalWrite(ADC_CS,LOW);
-
 	Serial.begin(115200);
 	Serial.println("Starting");
-
 	//USPIDATA16 = 0;
 	USPIDATA = 0;
         USPIDATA = 0;
-
 	REGISTER(HWMULTISPIBASE,1)= (unsigned)&ledmapping[0]; // SPI flash offset
 	REGISTER(HWMULTISPIBASE,2)= (unsigned)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 5076  - we use this /3 minus one
@@ -486,7 +451,6 @@ void loop()
 	  }
 	  else if (no_interpolation == 1) {}
 	}
-	
 	if (samp_done == 1) {
 	  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
 		  myfft.in_real[i].v= sampbuf[i];
@@ -498,7 +462,6 @@ void loop()
 	  controller_wait_ready();
 	  shift_buffer();
 	  for (z=0; z<BUFFERSIZE; z++) {
-	    //i = fftbuffermap[(z+spin_position)%BUFFERSIZE];
 	    i = fftbuffermap[z];
 	    FFT_type::fixed v = myfft.in_real[i];
 	    v.v>>=2;
@@ -510,8 +473,6 @@ void loop()
 	    v.v = fsqrt16(v.asNative());
 	    // Convert to HSV
 	    unsigned val = v.v;
-	    //unsigned val = val - buffermapoffset[z];
-	    //if (val < buffermapoffset[z]) {val = 0;} //This is the "floor" function used to combat bass at Burning Man 2014
 // 	    Serial.print(val);
 // 	    Serial.print(",");
 	    val = val/255;
@@ -522,10 +483,6 @@ void loop()
 // 	    Serial.print(val);
 // 	    Serial.print(".");
 	    }
-	  spin_position++;
-	  if (spin_position > BUFFERSIZE - 1) {
-	    spin_position = 0;
-	  }
 	  // Initiate SPI transctions for LED output
 	  outbuffer[0] = 0;
 	  controller_start();
@@ -559,4 +516,3 @@ void loop()
 	  Serial.println();
 	}
 }
-	
