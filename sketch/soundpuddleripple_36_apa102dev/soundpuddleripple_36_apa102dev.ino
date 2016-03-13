@@ -5,7 +5,7 @@
 #include <stdio.h>
 //#include "fixedpoint.h"
 //#define SAMPLING_FREQ 12000
-#define SAMPLING_FREQ 12110
+#define SAMPLING_FREQ 24000
 //#define SAMPLING_FREQ 21901
 //#define SAMPLING_FREQ 44100
 
@@ -19,8 +19,8 @@ fp32_16_16 gain = 5.0;
 #define NUMBUFFERS 128
 
 // Specify which interpolation functions to use
-int no_interpolation = 0;
-int shift_interpolation = 1;
+int no_interpolation = 1;
+int shift_interpolation = 0;
 
 int shiftdelay = 1; // delay in mS to slow down the shift interpolation function
 
@@ -279,7 +279,7 @@ void genhsvtable(float hue_offset) {
     Serial.print(".");
     Serial.print(ub);
     // The RGB channels are in the order GRB on APA102 LPD8806 strips
-    unsigned pixel = ( ((ub|0x80) << 16) | ((ug|0x80) << 8) | (ur|0x80) ) << 8;
+    unsigned pixel = 0xff404000;
     hsvtable[i] = pixel;
 //     Serial.print(Rvalue);
 //     Serial.print(".");
@@ -320,25 +320,6 @@ static void shift_buffer() {
 	for (i = ((NUMBUFFERS-1)*BUFFERSIZE); i!=0; i--) {
 		outbuffer[i+BUFFERSIZE] = outbuffer[i];
 	}
-}
-
-// Implements interpolation that shifts outbuffer[] and writes a new LED frame
-static void interpolate_buffer_shift() {
-	  controller_wait_ready();
-	  shift_buffer();
-	  int z;
-	  for (z=0; z<BUFFERSIZE; z++) {
-	    rtrans = r[z] + (fraction1024[sampbufptr] * r_delta[z]);
-	    gtrans = g[z] + (fraction1024[sampbufptr] * g_delta[z]);
-	    btrans = b[z] + (fraction1024[sampbufptr] * b_delta[z]);
-// 	    Serial.print(r[z]);
-// 	    Serial.print(";");
-	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
-	    outbuffer[z+1] = pixel;
-	  }
-	  outbuffer[0] = 0;
-	  controller_start();	 
-	  Serial.print("s");
 }
 
 // FFT sample acquisition interrupt function.
@@ -445,11 +426,6 @@ void loop()
 	int i,z;
 	if (samp_done == 0) {
 	  controller_wait_ready();
-	  if (shift_interpolation == 1) {
-	    interpolate_buffer_shift();
-	    delay(shiftdelay);
-	  }
-	  else if (no_interpolation == 1) {}
 	}
 	if (samp_done == 1) {
 	  for (i=0; i<SAMPLE_BUFFER_SIZE; i++) {
@@ -486,31 +462,6 @@ void loop()
 	  // Initiate SPI transctions for LED output
 	  outbuffer[0] = 0;
 	  controller_start();
-	  //Performance FFT-window calculations necesary for the shift interpolation function
-	  if (shift_interpolation == 1) {
-	    for (z=0; z<BUFFERSIZE; z++) {
-	    rgb_old[z] = rgb_new[z];
-	    rgb_new[z] = outbuffer[z+1];
-	    r_delta[z] = ((rgb_new[z] >> 24)-128) - ((rgb_old[z] >> 24)-128);
-	    g_delta[z] = (((rgb_new[z] & 0x00ff0000) >> 16)-128) - (((rgb_old[z] & 0x00ff0000) >> 16)-128);
-	    b_delta[z] = (((rgb_new[z] & 0x0000ff00) >> 8)-128) - (((rgb_old[z] & 0x0000ff00) >> 8)-128);
-	    r[z] = ((rgb_old[z]) >> 24)-128;
-	    g[z] = ((rgb_old[z] & 0x00ff0000) >> 16)-128;
-	    b[z] = ((rgb_old[z] & 0x0000ff00) >> 8)-128;
-	    r_step[z] = r_delta[z]/3;
-	    g_step[z] = g_delta[z]/3;
-	    b_step[z] = b_delta[z]/3;
-	    if (z == 20) {
-// 		Serial.print("_");
-// 		Serial.print(r[z]);
-// 		Serial.print(".");
-// 		Serial.print(r_delta[z]);
-// 		signed r_deltaprime = r_delta[z]/4;
-// 		Serial.print(".");
-//  		Serial.print(r_step[z]);
-	      }
-	    }
-	  }
 //  	  Serial.print(";");
 //  	  Serial.print(millis());
 	  Serial.println();
