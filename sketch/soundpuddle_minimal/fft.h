@@ -1,5 +1,11 @@
 #include "fixedpoint.h"
 
+// FFT size definition
+#define FFT_POINTS 1024
+#define SAMPLE_BUFFER_SIZE FFT_POINTS
+#define print_fft_vals 0
+
+
 #undef IMAGINARY_IN
 #define FIXEDPOINT
 
