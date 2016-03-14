@@ -3,7 +3,6 @@
 #undef IMAGINARY_IN
 #define FIXEDPOINT
 
-
 #ifdef FIXEDPOINT
 #define FPTYPE fp32_16_16
 #define ASDOUBLE(x) (x.asDouble())

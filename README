@@ -1,0 +1,32 @@
+This git repo contains the C/C++ Zpuino code portion of Soundpuddle, and associated utilites.
+
+To setup the HDL portion of the SoundPuddle system (which is NOT contained in this repo), use the following steps. The paths shown below are an example from my machine, you'll need to point to the right directories on your own computer.
+
+1) download ISE webpack, following gadget factory instructions: http://gadgetfactory.net/learn/2015/01/13/designlab-installation-guide-linux/
+
+2) install the ISE to your system, point your path to it. This is how I point my path in a terminal for my system:
+PATH=$PATH:/home/john/software/xilinx/14.7/ISE_DS/ISE/bin/lin64/
+PATH=$PATH:/home/john/software/papilio-zap-ide/hardware/tools/zpu/bin/
+
+3) Clone the ZPUino-HDL git repo for the HDL code
+git clone git@github.com:alvieboy/ZPUino-HDL.git
+
+4) Checkout the "soundpuddle" branch of the Zpuino-HDL repo
+git checkout soundpuddle
+
+5) Go to the soundpuddle board variant directoruy
+cd ./zpu/hdl/zpuino/boards/papilio-pro/S6LX9/variants/soundpuddle-mk2/
+
+6) Synthesize the FPGA design
+make
+
+7) Program the FPGA with the bit file you just generated:
+sudo ./xc3sprog -c ftdi -v -f papilio_pro_routed.bit
+
+8) Program the SPI flash so that the ZPUino is persistent
+sudo ./zpuinoprogrammer -d /dev/ttyUSB1 -l -o 0 -R -vv -b papilio_pro_routed.bin
+
+9) Clone the Zpuino-Code git repo for the C++ code
+git clone git@github.com:SoundPuddle/Zpuino-code.git
+
+10) Open the "sketch" with the ZAP ide, select Boards > "Papilio Pro LX9 Vanilla Variant," and program the board

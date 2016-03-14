@@ -1,5 +1,19 @@
 #include "color.h"
 
+extern float hue_offset = 0.72; // phase shift for the HSV function (range 0.00-0.99)
+extern float hue_limiter = 0.25;
+extern int hue_divisor = 240; // Nominal value is 255
+extern float hue_multiplier = 1.0;
+extern float hsvalue_max = 0.18;
+extern float hsvalue_floor = 2; // linear offest for the value of the HSV color generation function
+extern float rgain = 1.0; // red channel gain for the HSV color generation function
+extern float ggain = 1.0; // gree channel gain for the HSV color generation function
+extern float bgain = 1.0; // blue channel gain for the HSV color generation function
+extern float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
+extern float hue, hsvalue;
+extern unsigned int hsvtable[256];
+extern int clamp_value = 29;
+
 float Hue_2_RGB( float v1, float v2, float vH ) {
   if ( vH < 0 ) 
     vH += 1;
@@ -48,7 +62,7 @@ void HSL(float H, float S, float L, float Rval, float Gval, float Bval) {
 }
 
 //This function is tested good at Hackerspace, 2014-08-10. Modified from Lumenexus code.
-void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue) {
+void hsv2rgb(float h, float s, float v, uint8_t Rvalue, uint8_t Gvalue, uint8_t Bvalue) {
   float red;
   float green;
   float blue;
@@ -147,7 +161,7 @@ void genhsvtable(float hue_offset) {
     Serial.print(".");
     Serial.print(ub);
     // The RGB channels are in the order GRB on APA102 LPD8806 strips
-    unsigned pixel = 0xff404000;
+    unsigned pixel = 0xFFAAAAAA;
     hsvtable[i] = pixel;
 //     Serial.print(Rvalue);
 //     Serial.print(".");

@@ -1,23 +1,13 @@
-#include "fft.h"
-#include "soundpuddle.h"
-#include "mapping.h"
-#include "color.h"
+#include <Arduino.h>
 #include <math.h>
 #include <stdio.h>
+#include "soundpuddle.h"
 //#include "fixedpoint.h"
-//#define SAMPLING_FREQ 12000
-#define SAMPLING_FREQ 24000
-//#define SAMPLING_FREQ 21901
-//#define SAMPLING_FREQ 44100
 
 /* Apply a low-pass filter to FFT output */
 #define APPLY_LOWPASS
 /* Gain */
 fp32_16_16 gain = 5.0;
-
-// Specifiy FFT and LED buffer sizes
-#define BUFFERSIZE 36
-#define NUMBUFFERS 128
 
 // Specify which interpolation functions to use
 int no_interpolation = 1;
@@ -25,46 +15,9 @@ int shift_interpolation = 0;
 
 int shiftdelay = 1; // delay in mS to slow down the shift interpolation function
 
-// HSV color space controls
-float hue_offset = 0.72; // phase shift for the HSV function (range 0.00-0.99)
-float hue_limiter = 0.25;
-int hue_divisor = 240; // Nominal value is 255
-float hue_multiplier = 1.0;
-float hsvalue_max = 0.18;
-float hsvalue_floor = 2; // linear offest for the value of the HSV color generation function
-float rgain = 1.0; // red channel gain for the HSV color generation function
-float ggain = 1.0; // gree channel gain for the HSV color generation function
-float bgain = 1.0; // blue channel gain for the HSV color generation function
-float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
 int adc_gain = 3.14;
-int clamp_value = 29;
-
-// ADC pin and channel definition
-#define ADC_MOSI SP_MK2_ADCDIN_PIN
-#define ADC_MISO SP_MK2_ADCDOUT_PIN
-#define ADC_SCK  SP_MK2_ADCDCLK_PIN
-#define ADC_CS  SP_MK2_ADCCS_PIN
-#define ADC_channel 0x02 // specify the ADC channel
-
-#define print_fft_vals 0
-
-// Helper for 16-bit SPI transfer
-#define USPIDATA16 *((&USPIDATA)+2)
-#define USPIDATA24 *((&USPIDATA)+4)
-#define USPIDATA32 *((&USPIDATA)+6)
-#define SPIDATA16 *((&SPIDATA)+2)
-#define SPIDATA24 *((&SPIDATA)+4)
-#define SPIDATA32 *((&SPIDATA)+6)
-
-#define FFT_POINTS 1024
-#define SAMPLE_BUFFER_SIZE FFT_POINTS
-
-// Used only without dedicated HW
-#define RGB_DATAPIN WING_C_15
-#define RGB_CLKPIN WING_C_14
 
 unsigned fftbuffermap[BUFFERSIZE]={14,15,16,17,18,19,20,22,23,24,26,27,29,31,33,35,37,39,41,44,46,49,52,55,59,62,66,70,74,78,83,88,93,99,105,111};
-
 typedef FFT_1024 FFT_type;
 
 static FFT_type myfft;
@@ -102,37 +55,16 @@ unsigned int stepcounter; // keeps track of the number of interpolation steps ha
 volatile int pixelhue;
 volatile int pixelvalue;
 
-#define CLAMP(x) if ((x)<0) x=0; if ((x)>clamp_value) x=clamp_value;
-
-unsigned int hsvtable[256];
 unsigned rval,gval,bval;
-float hue, hsvalue;
 
 // HW acceleration base address
 #define HWMULTISPIBASE IO_SLOT(14)
 
 #if 0
 
-#define SPI3BASE  IO_SLOT(8)
-#define SPI3CTL  REGISTER(SPI3BASE,0)
-#define SPI3DATA REGISTER(SPI3BASE,1)
-void init_rgb()
-{
-	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP0);
-
-}
-unsigned rgboff=0;
-
-void rgb_latch(unsigned n)
-{
-	n = ((n + 63) / 64) * 3;
-	while(n--) {SPI3DATA=0};
-}
-
 #endif
 
 /* End debugging */
-
 
 void controller_wait_ready() {
 	while (REGISTER(HWMULTISPIBASE,0)!=0);
@@ -296,6 +228,7 @@ void loop()
 	    bin_val_old[z] = bin_val_new[z];
 	    bin_val_new[z] = val;
 	    outbuffer[z+1] = hsvtable[bin_val_old[z]]; // use the precomputed hsv table to converter the FFT bin v alue to RGB values
+	    outbuffer[z+1] = ~outbuffer[z+1]
 // 	    Serial.print(val);
 // 	    Serial.print(".");
 	    }

@@ -1,6 +1,9 @@
 #include "Arduino.h"
-
-#define LED_OFF 0x80808000
+#include <math.h>
+#include <stdio.h>
+#include "color.h"
+#include "fft.h"
+#include "mapping.h"
 
 // SoundPuddle MK2 megawing pin assignment definitions
 #define SP_MK2_MIDIIN_PIN WING_B_4
@@ -27,7 +30,6 @@
 #define USPIDATA16 *((&USPIDATA)+2)
 #define USPIDATA24 *((&USPIDATA)+4)
 #define USPIDATA32 *((&USPIDATA)+6)
-
 #define SPIDATA16 *((&SPIDATA)+2)
 #define SPIDATA24 *((&SPIDATA)+4)
 #define SPIDATA32 *((&SPIDATA)+6)
@@ -52,11 +54,14 @@
 // FFT size definition
 #define FFT_POINTS 1024
 #define SAMPLE_BUFFER_SIZE FFT_POINTS
+#define BUFFERSIZE 36 // number of strips
+#define NUMBUFFERS 128 // number of leds per strip
+#define SAMPLING_FREQ 24000 // unit (hz)
+#define print_fft_vals 0
 
 // Used only without dedicated HW
 #define RGB_DATAPIN WING_C_15
 #define RGB_CLKPIN WING_C_14
-
 
 class SoundPuddle_class
 {
@@ -74,7 +79,6 @@ public:
         cnt+=63;
         return cnt/64;
     }
-    
 private:
     register_t base;
 };
