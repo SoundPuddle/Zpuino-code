@@ -4,14 +4,21 @@
 #include "fft.h"
 #include "mapping.h"
 #include "led.h"
+#include "color.h"
+#include "serial.h"
 
-// FFT size definition
-#define FFT_POINTS 1024
-#define SAMPLE_BUFFER_SIZE FFT_POINTS
+// FFT sampling frequency
+#define SAMPLING_FREQ 24000 // unit (hz)
+
+// LED array dimensions
 #define NUMSPOKES 12 // number of strips
 #define SPOKESIZE 16 // number of leds per strip + start and stop packets
-#define SAMPLING_FREQ 24000 // unit (hz)
-#define print_fft_vals 0
+
+// LED packets (vary by LED type)
+#define ledstart 0x00000000
+#define ledstop 0xFFFFFFFF
+#define ledoff 0xFF000000
+#define ledtest 0xFF001000
 
 // SoundPuddle MK2 megawing pin assignment definitions
 #define SP_MK2_MIDIIN_PIN WING_B_4
@@ -43,12 +50,10 @@
 #define SPIDATA32 *((&SPIDATA)+6)
 
 // ADC pin and channel definition
-#define SAMPLING_FREQ 24000
 #define ADC_MOSI SP_MK2_ADCDIN_PIN
 #define ADC_MISO SP_MK2_ADCDOUT_PIN
 #define ADC_SCK  SP_MK2_ADCDCLK_PIN
 #define ADC_CS  SP_MK2_ADCCS_PIN
-#define ADC_channel 0x02 // specify the ADC channel (0x02 == internal mic)
 #define print_fft_vals 0
 
 // Helper for 16-bit SPI transfer
