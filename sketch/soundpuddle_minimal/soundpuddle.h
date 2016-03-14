@@ -1,20 +1,17 @@
 #include "Arduino.h"
 #include <math.h>
 #include <stdio.h>
-
-#define LED_OFF 0x80808000
-
 #include "fft.h"
 #include "mapping.h"
+#include "led.h"
 
 // FFT size definition
 #define FFT_POINTS 1024
 #define SAMPLE_BUFFER_SIZE FFT_POINTS
 #define NUMSPOKES 12 // number of strips
-#define SPOKESIZE 32 // number of leds per strip
+#define SPOKESIZE 16 // number of leds per strip + start and stop packets
 #define SAMPLING_FREQ 24000 // unit (hz)
 #define print_fft_vals 0
-
 
 // SoundPuddle MK2 megawing pin assignment definitions
 #define SP_MK2_MIDIIN_PIN WING_B_4

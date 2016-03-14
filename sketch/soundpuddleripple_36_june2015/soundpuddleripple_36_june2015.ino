@@ -18,6 +18,8 @@ fp32_16_16 gain = 5.0;
 #define BUFFERSIZE 36
 #define NUMBUFFERS 128
 
+long testpacket = 0xFF000000;
+
 // Specify which interpolation functions to use
 int step_interpolation = 0;
 int decay_interpolation = 0;
@@ -139,7 +141,7 @@ float hue, hsvalue;
 #define SPI3DATA REGISTER(SPI3BASE,1)
 void init_rgb()
 {
-	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP0);
+	SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP0)|BIT(SPITS4);
 
 }
 unsigned rgboff=0;
@@ -369,7 +371,7 @@ static void interpolate_buffer_shift() {
 // 	    Serial.print(r[z]);
 // 	    Serial.print(";");
 	    unsigned pixel = ( ((rtrans|0x80) << 16) | ((gtrans|0x80) << 8) | ((btrans|0x80)) ) << 8;
-	    outbuffer[z+1] = pixel;
+	    outbuffer[z+1] = testpacket;
 	  }
 	  outbuffer[0] = 0;
 	  controller_start();	 
@@ -534,7 +536,7 @@ void setup() {
 	}
 	int i;
 	for (i = 0; i< (1 + (NUMBUFFERS*BUFFERSIZE)); i++) {
-	  outbuffer[i] = 0;
+	  outbuffer[i] = testpacket;
 	}
 
 #if 0
@@ -603,7 +605,7 @@ void loop()
 	    if (val>0xff) {val=0xff;}
 	    bin_val_old[z] = bin_val_new[z];
 	    bin_val_new[z] = val;
-	    outbuffer[z+1] = hsvtable[bin_val_old[z]]; // use the precomputed hsv table to converter the FFT bin v alue to RGB values
+	    outbuffer[z+1] = testpacket;
 // 	    Serial.print(val);
 // 	    Serial.print(".");
 	    }

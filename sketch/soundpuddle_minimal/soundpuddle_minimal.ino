@@ -9,10 +9,8 @@
 /* Gain */
 fp32_16_16 gain = 5.0;
 
-unsigned long ledoff = 0xABABABAB;
-unsigned long testpacket = 0xFFFFFFFF;
-unsigned long startpacket = 0x00000000;
-unsigned long altpacket = 0xFF00AB00;
+// HW acceleration base address
+#define HWMULTISPIBASE IO_SLOT(14)
 
 int adc_gain = 3.14;
 
@@ -28,22 +26,26 @@ volatile unsigned int samp_counter; // variable to count FFT acquisition cycles
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
 
-unsigned long ledbuffer[(SPOKESIZE*(NUMSPOKES)) ]; // one extra, to hold 0x00000000
-unsigned long ledbuffersize = sizeof(ledbuffer);
+unsigned long ledbuffer[SPOKESIZE][NUMSPOKES];
 
-// HW acceleration base address
-#define HWMULTISPIBASE IO_SLOT(14)
-#if 0
-#endif
-
-/* End debugging */
-
+void setup_multispi() {    
+    REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
+    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&ledbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
+    // Writing direct mapping at 5076  - we use this /3 minus one
+    REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
+    REGISTER(HWMULTISPIBASE,4)= 0x54 ;
+}
 
 void controller_wait_ready() {
     while (REGISTER(HWMULTISPIBASE,0)!=0);
 }
 
 void controller_start() {
+    int i;
+    // Make sure the beginning of the LED command includes a start packet (4 bytes of 0's for the APA102)
+    //     for (i = 0; i< (1 + (NUMSPOKES)); i++) {
+    //         ledbuffer[i] = ledstart;
+    //     }
     REGISTER(HWMULTISPIBASE,0)=1;
 }
 
@@ -119,18 +121,7 @@ void setup() {
     //USPIDATA16 = 0;
     USPIDATA = 0;
     USPIDATA = 0;
-    REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
-    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&ledbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
-    // Writing direct mapping at 5076  - we use this /3 minus one
-    REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
-    /*
-     * w.lpres := wb_dat_i(4 downto 2);
-     * w.fpres := wb_dat_i(7 downto 5);
-     * 000 000 00
-     * 010 101 00
-     */
-    REGISTER(HWMULTISPIBASE,4)= 0x54 ;
-    
+    setup_multispi();
     /* Set up timer for a SAMPLING_FREQ frequency */
     TMR0CTL = 0;
     TMR0CNT = 0;
@@ -139,10 +130,7 @@ void setup() {
     INTRMASK = _BV(INTRLINE_TIMER0); // Enable Timer0 interrupt
     INTRCTL=1;  /* Enable interrupts */
     
-    int i;
-    for (i = 0; i< (ledbuffersize); i++) {
-        ledbuffer[i] = ledoff;
-    }
+    led_zeroall();
     #if 0
     init_rgb();
     #endif
@@ -152,16 +140,28 @@ unsigned timingbuf[16];
 
 void loop()
 {
+    led_output();
+    delay(5);
+}
+
+void led_output() {
     int i;
     controller_wait_ready();
-    for (i = 0; i< (ledbuffersize); i++) {
-        ledbuffer[i] = altpacket;
+    // LED data packets
+    ledbuffer[5][12] = ledtest;
+    // start and stop packets
+    for (i = 0; i< (NUMSPOKES +1); i++) {
+        ledbuffer[0][i] = ledstart;
+        ledbuffer[SPOKESIZE][i] = ledstop;
     }
-    for (i = 0; i< (1 + (NUMSPOKES)); i++) {
-        ledbuffer[i] = startpacket;
-    }
-    // Initiate SPI transctions for LED output
-    //ledbuffer[(SPOKESIZE*(NUMSPOKES))] = testpacket;
     controller_start();
-    delay(20);
+}
+
+void led_zeroall() {
+        int i,j;
+    for (i = 0; i < (SPOKESIZE + 1); i++) {
+        for (j = 0; j < (NUMSPOKES + 1); j++) {
+            ledbuffer[i][j] = ledoff;
+        }
+    }
 }
