@@ -1,10 +1,8 @@
 #include "fixedpoint.h"
 
 // FFT size definition
-#define FFT_POINTS 1024
-#define SAMPLE_BUFFER_SIZE FFT_POINTS
+#define FFT_SIZE 1024
 #define print_fft_vals 0
-
 
 #undef IMAGINARY_IN
 #define FIXEDPOINT
@@ -18,22 +16,22 @@
 #endif
 
 template<unsigned int M>
-	struct FFT
+struct FFT
 {
-	typedef FPTYPE fixed;
-	static const int N = 1<<M;
-	static const int N_D2 = N>>1;
-	static const int N_M1 = N-1;
-
-	void doFFT();
+    typedef FPTYPE fixed;
+    static const int N = 1<<M;
+    static const int N_D2 = N>>1;
+    static const int N_M1 = N-1;
+    
+    void doFFT();
     void doFFTi();
-	void doInverseFFT();
-	void reorder();
-	static const unsigned int sincostable[];
-
-	fixed in_real[N];
-	fixed in_im[N];
-
+    void doInverseFFT();
+    void reorder();
+    static const unsigned int sincostable[];
+    
+    fixed in_real[N];
+    fixed in_im[N];
+    
 };
 
 typedef FFT<10> FFT_1024;
