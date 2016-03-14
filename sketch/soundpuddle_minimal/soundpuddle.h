@@ -12,7 +12,7 @@
 
 // LED array dimensions
 #define NUMSPOKES 12 // number of strips
-#define SPOKESIZE 16 // number of leds per strip + start and stop packets
+#define SPOKESIZE 16 // number of leds per strip + start and stop packets (ex: 100 led long strips with apa102 stop would have spokesize==102)
 
 // LED packets (vary by LED type)
 #define ledstart 0x00000000
