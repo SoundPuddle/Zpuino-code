@@ -3,12 +3,11 @@
 #include <stdio.h>
 #include "fft.h"
 #include "mapping.h"
-//#include "led.h"
-#include "color.h"
 #include "serial.h"
+#include "color.h"
 
 // FFT sampling frequency
-#define SAMPLING_FREQ 24000 // unit (hz)
+#define SAMPLING_FREQ 44100 // unit (hz)
 
 // LED array dimensions
 #define NUMSPOKES 12 // number of strips

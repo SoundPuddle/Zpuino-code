@@ -121,3 +121,9 @@ void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggai
 //     hsvtable[i] = pixel;
   }
 }
+
+// This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
+unsigned long assemble_ledpacket(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global) {
+    unsigned long result = ( ((0xE0 | global) << 24) | (b_val << 16) | (g_val << 8) | r_val );
+    return result;
+}
