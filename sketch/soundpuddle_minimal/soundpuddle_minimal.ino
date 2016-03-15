@@ -1,16 +1,22 @@
 #include "soundpuddle.h"
 
+// System control
+int sysdelay = 5; // main while loop delay in (mS)
 
 // LED arrays
 unsigned long led_buffer[SPOKESIZE][NUMSPOKES];
+uint8_t r = 16;
+uint8_t g = 32;
+uint8_t b = 0;
+uint8_t global = 0x1F;
 
 // ADC and FFT configuration
 #define APPLY_LOWPASS /* Apply a low-pass filter to FFT output */
 fp32_16_16 gain = 5.0; /* Gain */
 int adc_gain = 3.14;
 int ADC_channel = 0x02; // specify the ADC channel (0x02 == internal mic)
-unsigned fftbuffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44};
-unsigned fftbuffer[NUMSPOKES];
+unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44};
+unsigned fft_buffer[NUMSPOKES];
 volatile unsigned int adcbuffer_ptr;
 volatile unsigned int samp_counter; // variable to count FFT acquisition cycles
 volatile int samp_done;
@@ -94,7 +100,7 @@ void controller_wait_ready() {
     while (REGISTER(HWMULTISPIBASE,0)!=0);
 }
 
-void controller_start() {
+void multispi_start() {
     REGISTER(HWMULTISPIBASE,0)=1;
 }
 
@@ -122,27 +128,65 @@ void _zpu_interrupt() {
     TMR0CTL &= ~(BIT(TCTLIF));
 }
 
-void led_output_prep() {
-    int i,j;
-    // LED data packets
-    for (i = 1; i < (SPOKESIZE); i++) {
-        for (j = 0; j < (NUMSPOKES + 1); j++) {
-            led_buffer[i][j] = ( ((0x00) << 16) | ((fftbuffer[i]) << 8) | (fftbuffer[j]) ) << 0;
-        }
-    }
-    // start and stop packets
-    for (i = 0; i< (NUMSPOKES +1); i++) {
-        led_buffer[0][i] = ledstart;
-        led_buffer[SPOKESIZE][i] = ledstop;
-    }
-}
-
+// This function writes the zero packet to all the LEDs in the array. This handles internal memory data only, it does not initiate SPI communication
 void led_zeroall() {
     int i,j;
     for (i = 0; i < (SPOKESIZE + 1); i++) {
         for (j = 0; j < (NUMSPOKES + 1); j++) {
             led_buffer[i][j] = ledoff;
         }
+    }
+}
+
+// This function writes the LED start and stop packets to the LED memory space
+void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
+    // LED data packets
+    int i,j;
+    for (i = 1; i < (SPOKESIZE); i++) {
+        for (j = 0; j < (NUMSPOKES + 1); j++) {
+            led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
+        }
+    }
+}
+
+// This function writes the LED start and stop packets to the LED memory space
+void led_output_prep() {
+    int i,j;
+    // put start and stop packets into LED memory space
+    for (i = 0; i< (NUMSPOKES +1); i++) {
+        led_buffer[0][i] = ledstart;
+        led_buffer[SPOKESIZE][i] = ledstop;
+    }
+}
+
+void led_writefft(uint8_t global_val) {
+    // LED data packets
+    int i,j;
+    for (i = 1; i < (SPOKESIZE); i++) {
+        for (j = 0; j < (NUMSPOKES + 1); j++) {
+            led_buffer[i][j] = assemble_ledpacket(fft_buffer[j], 0, 0, global_val);
+        }
+    }
+}
+
+void perform_fft() {
+    int i;
+    //move the ADC buffer to the FFT real input
+    for (i=0; i<FFT_SIZE; i++) {
+        myfft.in_real[i].v= adcbuffer[i];
+        myfft.in_im[i].v=0;
+    }
+    myfft.doFFT();    
+    for (i=0; i<NUMSPOKES; i++) {
+        FFT_type::fixed v = myfft.in_real[i];
+        v.v>>=2;
+        v *= v;
+        FFT_type::fixed u = myfft.in_im[i];
+        u.v>>=2;
+        u *= u;
+        v += u;
+        v.v = fsqrt16(v.asNative());
+        fft_buffer[i] = v.v >> 8;
     }
 }
 
@@ -155,34 +199,18 @@ void setup() {
 }
 
 void loop() {
-    int i;
     if (samp_done == 0) {
         controller_wait_ready();
     }
     if (samp_done == 1) {
-        for (i=0; i<FFT_SIZE; i++) {
-            myfft.in_real[i].v= adcbuffer[i];
-            myfft.in_im[i].v=0;
-        }
         samp_done=0;
-        myfft.doFFT();    
-        for (i=0; i<NUMSPOKES; i++) {
-            FFT_type::fixed v = myfft.in_real[i];
-            v.v>>=2;
-            v *= v;
-            FFT_type::fixed u = myfft.in_im[i];
-            u.v>>=2;
-            u *= u;
-            v += u;
-            v.v = fsqrt16(v.asNative());
-            fftbuffer[i] = v.v >> 8;
-            Serial.print(fftbuffer[i]);
-            Serial.print(";");
-        }
-        Serial.print("END;");
-        Serial.println(millis());
+        perform_fft();
+        //led_writeall(r,g,b,global);
+        led_writefft(global);
         led_output_prep();
-        controller_start();
+        multispi_start();
+        Serial.print(";");
+        Serial.println(millis());
     }
-    delay(5);
+    //delay(sysdelay);
 }
