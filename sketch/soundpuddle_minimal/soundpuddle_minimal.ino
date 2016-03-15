@@ -1,21 +1,22 @@
 #include "soundpuddle.h"
 
 
-
+// LED arrays
+unsigned long led_buffer[SPOKESIZE][NUMSPOKES];
 
 // ADC and FFT configuration
 #define APPLY_LOWPASS /* Apply a low-pass filter to FFT output */
 fp32_16_16 gain = 5.0; /* Gain */
 int adc_gain = 3.14;
 int ADC_channel = 0x02; // specify the ADC channel (0x02 == internal mic)
-unsigned long ledbuffer[SPOKESIZE][NUMSPOKES];
-unsigned fftbuffermap[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44};
-volatile unsigned int sampbufptr;
+unsigned fftbuffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44};
+unsigned fftbuffer[NUMSPOKES];
+volatile unsigned int adcbuffer_ptr;
 volatile unsigned int samp_counter; // variable to count FFT acquisition cycles
 volatile int samp_done;
 typedef FFT_1024 FFT_type;
 static FFT_type myfft;
-static int sampbuf[FFT_SIZE];
+static int adcbuffer[FFT_SIZE];
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 extern void printhex(unsigned int c);
@@ -53,7 +54,7 @@ while(n--) {SPI3DATA=0};
 
 void setup_multispi() {    
     REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
-    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&ledbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
+    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&led_buffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 5076  - we use this /3 minus one
     REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
     REGISTER(HWMULTISPIBASE,4)= 0x54 ;
@@ -67,7 +68,7 @@ void setup_multispi() {
 }
 
 void setup_adc() {
-    sampbufptr = 0;
+    adcbuffer_ptr = 0;
     samp_done = 0;
     pinMode(ADC_MOSI,   OUTPUT);
     pinMode(ADC_SCK,    OUTPUT);
@@ -104,17 +105,17 @@ void _zpu_interrupt() {
         FFT_type::fixed winv;
         fv.v = ((int)(USPIDATA & 0xffff)-2047);
         // Multiply by window
-        winv.v = window[sampbufptr];
-        //sampbuf[sampbufptr] = winv.v;
+        winv.v = window[adcbuffer_ptr];
+        //adcbuffer[adcbuffer_ptr] = winv.v;
         // Advance file
         SPIDATA32=0;
         fv *= winv;
-        sampbuf[sampbufptr] = fv.v;
+        adcbuffer[adcbuffer_ptr] = fv.v;
         //USPIDATA16=0; // Start readingUSPIDATA16=0 next sample
-        sampbufptr++;
-        if (sampbufptr==FFT_SIZE) {
+        adcbuffer_ptr++;
+        if (adcbuffer_ptr==FFT_SIZE) {
             samp_done = 1;
-            sampbufptr = 0;
+            adcbuffer_ptr = 0;
         }
     }
     USPIDATA16=(ADC_channel<<11); // Start reading next sample
@@ -126,13 +127,13 @@ void led_output_prep() {
     // LED data packets
     for (i = 1; i < (SPOKESIZE); i++) {
         for (j = 0; j < (NUMSPOKES + 1); j++) {
-            ledbuffer[i][j] = ledtest;
+            led_buffer[i][j] = ( ((0x00) << 16) | ((fftbuffer[i]) << 8) | (fftbuffer[j]) ) << 0;
         }
     }
     // start and stop packets
     for (i = 0; i< (NUMSPOKES +1); i++) {
-        ledbuffer[0][i] = ledstart;
-        ledbuffer[SPOKESIZE][i] = ledstop;
+        led_buffer[0][i] = ledstart;
+        led_buffer[SPOKESIZE][i] = ledstop;
     }
 }
 
@@ -140,7 +141,7 @@ void led_zeroall() {
     int i,j;
     for (i = 0; i < (SPOKESIZE + 1); i++) {
         for (j = 0; j < (NUMSPOKES + 1); j++) {
-            ledbuffer[i][j] = ledoff;
+            led_buffer[i][j] = ledoff;
         }
     }
 }
@@ -159,33 +160,29 @@ void loop() {
         controller_wait_ready();
     }
     if (samp_done == 1) {
-        samp_done=0;
         for (i=0; i<FFT_SIZE; i++) {
-            //                 myfft.in_real[i].v= sampbuf[i];
-            Serial.print(sampbuf[i]);
-            Serial.print(";");
-            //                 myfft.in_im[i].v=0;
+            myfft.in_real[i].v= adcbuffer[i];
+            myfft.in_im[i].v=0;
         }
+        samp_done=0;
+        myfft.doFFT();    
+        for (i=0; i<NUMSPOKES; i++) {
+            FFT_type::fixed v = myfft.in_real[i];
+            v.v>>=2;
+            v *= v;
+            FFT_type::fixed u = myfft.in_im[i];
+            u.v>>=2;
+            u *= u;
+            v += u;
+            v.v = fsqrt16(v.asNative());
+            fftbuffer[i] = v.v >> 8;
+            Serial.print(fftbuffer[i]);
+            Serial.print(";");
+        }
+        Serial.print("END;");
+        Serial.println(millis());
+        led_output_prep();
+        controller_start();
     }
-    //     myfft.doFFT();
-    //     for (i=0; i<NUMSPOKES; i++) {
-    //         FFT_type::fixed v = myfft.in_real[i];
-    //         v.v>>=2;
-    //         v *= v;
-    //         FFT_type::fixed u = myfft.in_im[i];
-    //         u.v>>=2;
-    //         u *= u;
-    //         v += u;
-    //         v.v = fsqrt16(v.asNative());
-    //         unsigned val = v.v;
-    //         //val = val/255;
-    //         ledbuffer[1][i] = val;
-    //         //Serial.print(val);
-    //         //Serial.print(";");
-    //     }
-    Serial.print(";");
-    Serial.println(millis());
-    led_output_prep();
-    controller_start();
     delay(5);
 }
