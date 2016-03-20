@@ -4,7 +4,7 @@ print "Calculating optimal sample rate"
 maxsamplerate = 24000
 min_sample_rate = 12000
 
-fftsize = 1024
+fftsize = 512
 
 #target_freqs = [77.78, 82.41, 87.31, 92.5, 98, 103.8, 110, 116.5, 123.5, 130.8, 138.6, 146.8, 155.6, 164.8, 174.6, 185, 196, 207.7, 220, 233.1, 246.9, 261.6, 277.2, 293.7]
 
