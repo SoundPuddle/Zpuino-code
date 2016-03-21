@@ -4,7 +4,7 @@
 int sysdelay = 1; // main while loop delay in (mS)
 
 // UART interface to WT32 Bluetooth 2.0 module
-HardwareSerial uart2(9); // initial uart2, connection to Zpuino IO slot 13
+HardwareSerial uart2(12); // initial uart2, connection to Zpuino IO slot 12
 
 // LED arrays
 unsigned long led_buffer[SPOKESIZE][NUMSPOKES];
@@ -196,40 +196,48 @@ void perform_fft() {
 void setup() {
     setup_adc();
     led_zeroall();
-    Serial.begin(115200);
-    Serial.println("Starting");
+//     Serial.begin(115200);
+//     Serial.println("Starting");
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
-    pinMode(SP_MK2_UART2TX_PIN, OUTPUT); // UART2 TX pin for BT module communication
-    //pinModePPS(SP_MK2_UART2TX_PIN, HIGH); // Turn on the TX pin
-    outputPinForFunction(SP_MK2_UART2TX_PIN, 6); // Map output PP6 to the physical pin
-    pinMode(SP_MK2_UART2TX_PIN, INPUT); // UART2 RX pin for BT module communication
+    pinMode(41, OUTPUT); // UART2 TX pin for BT module communication
+    pinModePPS(41, HIGH); // Turn on the TX pin
+    outputPinForFunction(41, 6); // Map output PP6 to the physical pin
+    pinMode(SP_MK2_UART2RX_PIN, INPUT); // UART2 RX pin for BT module communication
     inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
     uart2.begin(9600);
     //uart2.println("Starting");
 }
 
 void loop() {
-    //digitalWrite(SP_MK2_UART2TX_PIN, LOW);
+    //digitalWrite(24, LOW);
     if (samp_done == 0) {
         controller_wait_ready();
     }
     if (samp_done == 1) {
         samp_done=0;
-        //digitalWrite(SP_MK2_UART2TX_PIN, HIGH);
+        //digitalWrite(24, HIGH);
         perform_fft();
-        //digitalWrite(SP_MK2_UART2TX_PIN, LOW);
+        //digitalWrite(24, LOW);
         //led_writeall(r,g,b,global);
         led_writefft(global);
         led_output_prep();
         multispi_start();
         //Serial.print(";");
         //Serial.println(millis());
-        uart2.write(1);
+        uart2.write(0xAB);
+//         uart2.print("hello");
+//     delay(1);
+//         digitalWrite(41,HIGH);
+//     delay(1);
+//     digitalWrite(41,LOW);
     }
     
     //delay(2);
     
-    uart2.write(1);
+    uart2.write(0xAB);
+//     digitalWrite(41,HIGH);
+//     delay(1);
+//     digitalWrite(41,LOW);
    // uart2.print("Starting");
 //     if (uart2.available()) {
 //         Serial.println(uart2.read());
