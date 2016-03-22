@@ -8,10 +8,10 @@ HardwareSerial uart2(12); // initial uart2, connection to Zpuino IO slot 12
 int incomingByte = 0; 
 
 // // LED arrays
-unsigned long led_buffer[SPOKESIZE][NUMSPOKES];
-uint8_t r = 16;
-uint8_t g = 32;
-uint8_t b = 0;
+unsigned long led_buffer[SPOKESIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
+uint8_t r = 0x0;
+uint8_t g = 0x0;
+uint8_t b = 0x0;
 uint8_t global = 0x1F;
 
 // // ADC and FFT configuration
@@ -99,6 +99,16 @@ void setup_adc() {
     setup_multispi();
 }
 
+void setup_uart2() {
+    pinMode(SP_MK2_UART2TX_PIN, OUTPUT); // UART2 TX pin for BT module communication
+    pinModePPS(SP_MK2_UART2TX_PIN, HIGH); // Turn on the TX pin
+    outputPinForFunction(SP_MK2_UART2TX_PIN, 6); // Map output PP6 to the physical pin
+    pinMode(SP_MK2_UART2RX_PIN, INPUT); // UART2 RX pin for BT module communication
+    inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
+    uart2.begin(115200);
+    //uart2.println("Starting");
+}
+
 void controller_wait_ready() {
     while (REGISTER(HWMULTISPIBASE,0)!=0);
 }
@@ -109,44 +119,58 @@ void multispi_start() {
 
 // FFT sample acquisition interrupt function.
 void _zpu_interrupt() {
-//     if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
-//         FFT_type::fixed fv;
-//         FFT_type::fixed winv;
-//         fv.v = ((int)(USPIDATA & 0xffff)-2047);
-//         // Multiply by window
-//         winv.v = window[adcbuffer_ptr];
-//         adcbuffer[adcbuffer_ptr] = winv.v;
-//         // Advance file
-//         SPIDATA32=0;
-//         fv *= winv;
-//         adcbuffer[adcbuffer_ptr] = fv.v;
-//         USPIDATA16=0; // Start reading next sample
-//         adcbuffer_ptr++;
-//         if (adcbuffer_ptr==FFT_SIZE) {
-//             samp_done = 1;
-//             adcbuffer_ptr = 0;
-//         }
-//     }
-//     USPIDATA16=(ADC_channel<<11); // Start reading next sample
-//     TMR0CTL &= ~(BIT(TCTLIF));
+    if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
+        FFT_type::fixed fv;
+        FFT_type::fixed winv;
+        fv.v = ((int)(USPIDATA & 0xffff)-2047);
+        // Multiply by window
+        winv.v = window[adcbuffer_ptr];
+        adcbuffer[adcbuffer_ptr] = winv.v;
+        // Advance file
+        SPIDATA32=0;
+        fv *= winv;
+        adcbuffer[adcbuffer_ptr] = fv.v;
+        USPIDATA16=0; // Start reading next sample
+        adcbuffer_ptr++;
+        if (adcbuffer_ptr==FFT_SIZE) {
+            samp_done = 1;
+            adcbuffer_ptr = 0;
+        }
+    }
+    USPIDATA16=(ADC_channel<<11); // Start reading next sample
+    TMR0CTL &= ~(BIT(TCTLIF));
 }
 
 // This function writes the zero packet to all the LEDs in the array. This handles internal memory data only, it does not initiate SPI communication
 // void led_zeroall() {
 //     int i,j;
 //     for (i = 0; i < (SPOKESIZE + 1); i++) {
-//         for (j = 0; j < (NUMSPOKES + 1); j++) {
+//         for (j = 0; j < (NUMSPOKES); j++) {
 //             led_buffer[i][j] = ledoff;
 //         }
 //     }
 // }
 
+// // This function writes the LED start and stop packets to the LED memory space
+// void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
+//     // LED data packets
+//     int i,j;
+//     // start after the first entry (which is the ledstart packet), end before the last packet (ledstop)
+//     for (i = 1; i < (SPOKESIZE - 1); i++) {
+//         // increment through each spoke
+//         for (j = 0; j < (NUMSPOKES); j++) {
+//             led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
+//         }
+//     }
+// }
 // This function writes the LED start and stop packets to the LED memory space
 void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
     // LED data packets
     int i,j;
-    for (i = 1; i < (SPOKESIZE); i++) {
-        for (j = 0; j < (NUMSPOKES + 1); j++) {
+    // start after the first entry (which is the ledstart packet), end before the last packet (ledstop)
+    for (i = 0; i < (SPOKESIZE + 4); i++) {
+        // increment through each spoke
+        for (j = 0; j < (NUMSPOKES); j++) {
             led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
         }
     }
@@ -156,7 +180,8 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
 void led_output_prep() {
     int i,j;
     // put start and stop packets into LED memory space
-    for (i = 0; i< (NUMSPOKES +1); i++) {
+    for (i = 0; i < (NUMSPOKES); i++) {
+        // the first packet for each spoke
         led_buffer[0][i] = ledstart;
         led_buffer[SPOKESIZE][i] = ledstop;
     }
@@ -165,8 +190,8 @@ void led_output_prep() {
 void led_writefft(uint8_t global_val) {
     // LED data packets
     int i,j;
-    for (i = 1; i < (SPOKESIZE); i++) {
-        for (j = 0; j < (NUMSPOKES + 1); j++) {
+    for (i = 1; i < (SPOKESIZE + 1); i++) {
+        for (j = 0; j < (NUMSPOKES); j++) {
             led_buffer[i][j] = assemble_ledpacket(fft_buffer[j], 0, 0, global_val);
         }
     }
@@ -193,16 +218,6 @@ void perform_fft() {
     }
 }
 
-void setup_uart2() {
-    pinMode(SP_MK2_UART2TX_PIN, OUTPUT); // UART2 TX pin for BT module communication
-    pinModePPS(SP_MK2_UART2TX_PIN, HIGH); // Turn on the TX pin
-    outputPinForFunction(SP_MK2_UART2TX_PIN, 6); // Map output PP6 to the physical pin
-    pinMode(SP_MK2_UART2RX_PIN, INPUT); // UART2 RX pin for BT module communication
-    inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
-    uart2.begin(115200);
-    //uart2.println("Starting");
-}
-
 void setup() {
     setup_adc();
 //     led_zeroall();
@@ -211,53 +226,23 @@ void setup() {
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
     delay(5);
     setup_uart2();
-    uart2.print("SET BT SSP 3 0");
 }
 
 void loop() {
-//     digitalWrite(24, LOW);
-//     if (samp_done == 0) {
-//         controller_wait_ready();
-//     }
-//     if (samp_done == 1) {
-//         samp_done=0;
-//         //digitalWrite(24, HIGH);
+    if (samp_done == 0) {
+        controller_wait_ready();
+    }
+    if (samp_done == 1) {
+        samp_done=0;
 //         perform_fft();
-//         //digitalWrite(24, LOW);
-// //          led_writeall(r,g,b,global);
+        led_writeall(r,g,b,global);
 //         led_writefft(global);
 //         led_output_prep();
-//         multispi_start();
-//         uart2.write(0xAB);
-// //         uart2.print("hello");
-// //     delay(1);
-// //         digitalWrite(41,HIGH);
-// //     delay(1);
-// //     digitalWrite(41,LOW);
-//     }
-    
-    //delay(2);
-    
-//     uart2.write(0xAB);
-//     digitalWrite(41,HIGH);
-//     delay(1);
-//     digitalWrite(41,LOW);
-   // uart2.print("Starting");
-//     if (uart2.available()) {
-//         Serial.println(uart2.read());
-//     }
-//     Serial.print(0xAB);
-        //uart2.print("SET BT NAME SP2");
-        uart2.print("AT");
-//         delay(1);
-        while (uart2.available() > 0) {
-                // read the incoming byte:
-                //incomingByte = uart2.read();
-
-                // say what you got:
-                Serial.print("rec: ");
-                Serial.println(uart2.read(), DEC);
-        }
-        Serial.println("next");
-     delay(100);
+        multispi_start();
+    }
+    while (uart2.available() > 0) {
+        Serial.print("rec: ");
+        Serial.println(uart2.read(), DEC);
+    }
+     delay(sysdelay);
 }
