@@ -168,7 +168,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     // LED data packets
     int i,j;
     // start after the first entry (which is the ledstart packet), end before the last packet (ledstop)
-    for (i = 0; i < (SPOKESIZE + 4); i++) {
+    for (i = 0; i < (SPOKESIZE - 1); i++) {
         // increment through each spoke
         for (j = 0; j < (NUMSPOKES); j++) {
             led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
