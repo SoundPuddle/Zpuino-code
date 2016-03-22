@@ -39,17 +39,17 @@ print STDERR "Dumping to binary file 'out.bin'\n";
 # First, add flush code
 # ((n + 63) / 64) * 3
 
-for (my $i=0;$i<$numctrl;$i++) {
-    my $cnt = $sizes[$i];
-    
-    $cnt+=63;
-    $cnt = int(($cnt/64));
-    #print STDERR "Flush for channel $i: $cnt\n";
-    while ($cnt) {
-        push(@{$controllers[$i]},0);
-        $cnt--;
-    }
-}
+# for (my $i=0;$i<$numctrl;$i++) {
+#     my $cnt = $sizes[$i];
+#     
+#     $cnt+=63;
+#     $cnt = int(($cnt/64));
+#     #print STDERR "Flush for channel $i: $cnt\n";
+#     while ($cnt) {
+#         push(@{$controllers[$i]},0);
+#         $cnt--;
+#     }
+# }
 
 
 open(my $out, '>', "out.bin");
@@ -94,42 +94,42 @@ for (my $i=0;$i<$numctrl;$i++) {
         $cnt--;
         $items++;
     }
-    # Write flush code
-    
-    $cnt = $sizes[$i];
-
-    $cnt+=63;
-    $cnt = int(($cnt/64));
-
-    while ($cnt) {
-            print $out pack("Cn",$i,0);
-            printf $outc "\t0x%08x, /* %s */ \n", ($i<<16),
-                "Controller $i, flush";
-            
-        $items++;
-        $cnt--;
-    }
+#     # Write flush code
+#     
+#     $cnt = $sizes[$i];
+# 
+#     $cnt+=63;
+#     $cnt = int(($cnt/64));
+# 
+#     while ($cnt) {
+#             print $out pack("Cn",$i,0);
+#             printf $outc "\t0x%08x, /* %s */ \n", ($i<<16),
+#                 "Controller $i, flush";
+#             
+#         $items++;
+#         $cnt--;
+#     }
     print STDERR "End controller $i at ",tell($out)," ($items items)\n";
 }
 
-print STDERR "Writing flush code at ", tell $out, "\n";
-my $flushsize=0;
-my $flushoff_words= tell($out)/3;
+# print STDERR "Writing flush code at ", tell $out, "\n";
+# my $flushsize=0;
+# my $flushoff_words= tell($out)/3;
 
-for (my $i=0;$i<$numctrl;$i++) {
-    my $cnt = $sizes[$i];
-
-    $cnt+=63;
-    $cnt = int(($cnt/64));
-
-    while ($cnt) {
-        print $out pack("Cn",$i,0);
-        my $sep = ($cnt==1 && $i==($numctrl-1)) ? "":",";
-        printf $outc "\t0x%08x".$sep."\n", 0 + ($i<<16);
-        $flushsize++;
-        $cnt--;
-    }
-}
+# for (my $i=0;$i<$numctrl;$i++) {
+#     my $cnt = $sizes[$i];
+# 
+#     $cnt+=63;
+#     $cnt = int(($cnt/64));
+# 
+#     while ($cnt) {
+#         print $out pack("Cn",$i,0);
+#         my $sep = ($cnt==1 && $i==($numctrl-1)) ? "":",";
+#         printf $outc "\t0x%08x".$sep."\n", 0 + ($i<<16);
+#         $flushsize++;
+#         $cnt--;
+#     }
+# }
 print $outc "};\n";
 
 print STDERR "End at ", tell $out, "\n";
@@ -139,8 +139,8 @@ open($outc, '>', "mapping.h");
 print $outc "#ifndef __MAPPING_H__\n";
 print $outc "#define __MAPPING_H__\n";
 print $outc "extern unsigned int ledmapping[]; \n";
-print $outc "#define FLUSH_OFFSET $flushoff_words /* In words */\n";
-print $outc "#define FLUSH_SIZE $flushsize /* In words */\n";
+# print $outc "#define FLUSH_OFFSET $flushoff_words /* In words */\n";
+# print $outc "#define FLUSH_SIZE $flushsize /* In words */\n";
 print $outc "#define DIRECTMAP_OFFSET $offdirectmap /* In words */ \n" ;
 print $outc "#define NUMLEDS $total \n" ;
 print $outc "#endif\n" ;
