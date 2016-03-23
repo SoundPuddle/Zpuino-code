@@ -1,6 +1,8 @@
 #ifndef __MAPPING_H__
 #define __MAPPING_H__
 extern unsigned int ledmapping[]; 
-#define DIRECTMAP_OFFSET 396 /* In words */ 
-#define NUMLEDS 396 
+#define FLUSH_OFFSET 0 /* In words */
+#define FLUSH_SIZE 0 /* In words */
+#define DIRECTMAP_OFFSET 191 /* In words */ 
+#define NUMLEDS 192
 #endif
