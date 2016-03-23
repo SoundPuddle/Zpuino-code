@@ -11,7 +11,7 @@
 
 // LED array dimensions
 #define NUMSPOKES 12 // number of strips (index at 1, i.e. 12 strips = 12)
-#define SPOKESIZE 34 // number of leds per strip (index at 1, i.e. 128 LEDS in a strip = 128)
+#define SPOKESIZE 16 // number of leds per strip (index at 1, i.e. 128 LEDS in a strip = 128)
 //#define SPOKEBUFFERSIZE SPOKESIZE + 2 // number of leds per strip (index at 1, i.e. 128 LEDS in a strip = 128)
 
 // LED packets (vary by LED type)

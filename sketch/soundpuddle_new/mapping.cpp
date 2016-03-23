@@ -191,210 +191,18 @@ unsigned int ledmapping[] = {
 	0x000902f8, /* Controller 9, led 15, offset 760 */
 	0x000a02fc, /* Controller 10, led 15, offset 764 */
 	0x000b0300, /* Controller 11, led 15, offset 768 */
-	0x00000304, /* Controller 0, led 16, offset 772 */
-	0x00010308, /* Controller 1, led 16, offset 776 */
-	0x0002030c, /* Controller 2, led 16, offset 780 */
-	0x00030310, /* Controller 3, led 16, offset 784 */
-	0x00040314, /* Controller 4, led 16, offset 788 */
-	0x00050318, /* Controller 5, led 16, offset 792 */
-	0x0006031c, /* Controller 6, led 16, offset 796 */
-	0x00070320, /* Controller 7, led 16, offset 800 */
-	0x00080324, /* Controller 8, led 16, offset 804 */
-	0x00090328, /* Controller 9, led 16, offset 808 */
-	0x000a032c, /* Controller 10, led 16, offset 812 */
-	0x000b0330, /* Controller 11, led 16, offset 816 */
-	0x00000334, /* Controller 0, led 17, offset 820 */
-	0x00010338, /* Controller 1, led 17, offset 824 */
-	0x0002033c, /* Controller 2, led 17, offset 828 */
-	0x00030340, /* Controller 3, led 17, offset 832 */
-	0x00040344, /* Controller 4, led 17, offset 836 */
-	0x00050348, /* Controller 5, led 17, offset 840 */
-	0x0006034c, /* Controller 6, led 17, offset 844 */
-	0x00070350, /* Controller 7, led 17, offset 848 */
-	0x00080354, /* Controller 8, led 17, offset 852 */
-	0x00090358, /* Controller 9, led 17, offset 856 */
-	0x000a035c, /* Controller 10, led 17, offset 860 */
-	0x000b0360, /* Controller 11, led 17, offset 864 */
-	0x00000364, /* Controller 0, led 18, offset 868 */
-	0x00010368, /* Controller 1, led 18, offset 872 */
-	0x0002036c, /* Controller 2, led 18, offset 876 */
-	0x00030370, /* Controller 3, led 18, offset 880 */
-	0x00040374, /* Controller 4, led 18, offset 884 */
-	0x00050378, /* Controller 5, led 18, offset 888 */
-	0x0006037c, /* Controller 6, led 18, offset 892 */
-	0x00070380, /* Controller 7, led 18, offset 896 */
-	0x00080384, /* Controller 8, led 18, offset 900 */
-	0x00090388, /* Controller 9, led 18, offset 904 */
-	0x000a038c, /* Controller 10, led 18, offset 908 */
-	0x000b0390, /* Controller 11, led 18, offset 912 */
-	0x00000394, /* Controller 0, led 19, offset 916 */
-	0x00010398, /* Controller 1, led 19, offset 920 */
-	0x0002039c, /* Controller 2, led 19, offset 924 */
-	0x000303a0, /* Controller 3, led 19, offset 928 */
-	0x000403a4, /* Controller 4, led 19, offset 932 */
-	0x000503a8, /* Controller 5, led 19, offset 936 */
-	0x000603ac, /* Controller 6, led 19, offset 940 */
-	0x000703b0, /* Controller 7, led 19, offset 944 */
-	0x000803b4, /* Controller 8, led 19, offset 948 */
-	0x000903b8, /* Controller 9, led 19, offset 952 */
-	0x000a03bc, /* Controller 10, led 19, offset 956 */
-	0x000b03c0, /* Controller 11, led 19, offset 960 */
-	0x000003c4, /* Controller 0, led 20, offset 964 */
-	0x000103c8, /* Controller 1, led 20, offset 968 */
-	0x000203cc, /* Controller 2, led 20, offset 972 */
-	0x000303d0, /* Controller 3, led 20, offset 976 */
-	0x000403d4, /* Controller 4, led 20, offset 980 */
-	0x000503d8, /* Controller 5, led 20, offset 984 */
-	0x000603dc, /* Controller 6, led 20, offset 988 */
-	0x000703e0, /* Controller 7, led 20, offset 992 */
-	0x000803e4, /* Controller 8, led 20, offset 996 */
-	0x000903e8, /* Controller 9, led 20, offset 1000 */
-	0x000a03ec, /* Controller 10, led 20, offset 1004 */
-	0x000b03f0, /* Controller 11, led 20, offset 1008 */
-	0x000003f4, /* Controller 0, led 21, offset 1012 */
-	0x000103f8, /* Controller 1, led 21, offset 1016 */
-	0x000203fc, /* Controller 2, led 21, offset 1020 */
-	0x00030400, /* Controller 3, led 21, offset 1024 */
-	0x00040404, /* Controller 4, led 21, offset 1028 */
-	0x00050408, /* Controller 5, led 21, offset 1032 */
-	0x0006040c, /* Controller 6, led 21, offset 1036 */
-	0x00070410, /* Controller 7, led 21, offset 1040 */
-	0x00080414, /* Controller 8, led 21, offset 1044 */
-	0x00090418, /* Controller 9, led 21, offset 1048 */
-	0x000a041c, /* Controller 10, led 21, offset 1052 */
-	0x000b0420, /* Controller 11, led 21, offset 1056 */
-	0x00000424, /* Controller 0, led 22, offset 1060 */
-	0x00010428, /* Controller 1, led 22, offset 1064 */
-	0x0002042c, /* Controller 2, led 22, offset 1068 */
-	0x00030430, /* Controller 3, led 22, offset 1072 */
-	0x00040434, /* Controller 4, led 22, offset 1076 */
-	0x00050438, /* Controller 5, led 22, offset 1080 */
-	0x0006043c, /* Controller 6, led 22, offset 1084 */
-	0x00070440, /* Controller 7, led 22, offset 1088 */
-	0x00080444, /* Controller 8, led 22, offset 1092 */
-	0x00090448, /* Controller 9, led 22, offset 1096 */
-	0x000a044c, /* Controller 10, led 22, offset 1100 */
-	0x000b0450, /* Controller 11, led 22, offset 1104 */
-	0x00000454, /* Controller 0, led 23, offset 1108 */
-	0x00010458, /* Controller 1, led 23, offset 1112 */
-	0x0002045c, /* Controller 2, led 23, offset 1116 */
-	0x00030460, /* Controller 3, led 23, offset 1120 */
-	0x00040464, /* Controller 4, led 23, offset 1124 */
-	0x00050468, /* Controller 5, led 23, offset 1128 */
-	0x0006046c, /* Controller 6, led 23, offset 1132 */
-	0x00070470, /* Controller 7, led 23, offset 1136 */
-	0x00080474, /* Controller 8, led 23, offset 1140 */
-	0x00090478, /* Controller 9, led 23, offset 1144 */
-	0x000a047c, /* Controller 10, led 23, offset 1148 */
-	0x000b0480, /* Controller 11, led 23, offset 1152 */
-	0x00000484, /* Controller 0, led 24, offset 1156 */
-	0x00010488, /* Controller 1, led 24, offset 1160 */
-	0x0002048c, /* Controller 2, led 24, offset 1164 */
-	0x00030490, /* Controller 3, led 24, offset 1168 */
-	0x00040494, /* Controller 4, led 24, offset 1172 */
-	0x00050498, /* Controller 5, led 24, offset 1176 */
-	0x0006049c, /* Controller 6, led 24, offset 1180 */
-	0x000704a0, /* Controller 7, led 24, offset 1184 */
-	0x000804a4, /* Controller 8, led 24, offset 1188 */
-	0x000904a8, /* Controller 9, led 24, offset 1192 */
-	0x000a04ac, /* Controller 10, led 24, offset 1196 */
-	0x000b04b0, /* Controller 11, led 24, offset 1200 */
-	0x000004b4, /* Controller 0, led 25, offset 1204 */
-	0x000104b8, /* Controller 1, led 25, offset 1208 */
-	0x000204bc, /* Controller 2, led 25, offset 1212 */
-	0x000304c0, /* Controller 3, led 25, offset 1216 */
-	0x000404c4, /* Controller 4, led 25, offset 1220 */
-	0x000504c8, /* Controller 5, led 25, offset 1224 */
-	0x000604cc, /* Controller 6, led 25, offset 1228 */
-	0x000704d0, /* Controller 7, led 25, offset 1232 */
-	0x000804d4, /* Controller 8, led 25, offset 1236 */
-	0x000904d8, /* Controller 9, led 25, offset 1240 */
-	0x000a04dc, /* Controller 10, led 25, offset 1244 */
-	0x000b04e0, /* Controller 11, led 25, offset 1248 */
-	0x000004e4, /* Controller 0, led 26, offset 1252 */
-	0x000104e8, /* Controller 1, led 26, offset 1256 */
-	0x000204ec, /* Controller 2, led 26, offset 1260 */
-	0x000304f0, /* Controller 3, led 26, offset 1264 */
-	0x000404f4, /* Controller 4, led 26, offset 1268 */
-	0x000504f8, /* Controller 5, led 26, offset 1272 */
-	0x000604fc, /* Controller 6, led 26, offset 1276 */
-	0x00070500, /* Controller 7, led 26, offset 1280 */
-	0x00080504, /* Controller 8, led 26, offset 1284 */
-	0x00090508, /* Controller 9, led 26, offset 1288 */
-	0x000a050c, /* Controller 10, led 26, offset 1292 */
-	0x000b0510, /* Controller 11, led 26, offset 1296 */
-	0x00000514, /* Controller 0, led 27, offset 1300 */
-	0x00010518, /* Controller 1, led 27, offset 1304 */
-	0x0002051c, /* Controller 2, led 27, offset 1308 */
-	0x00030520, /* Controller 3, led 27, offset 1312 */
-	0x00040524, /* Controller 4, led 27, offset 1316 */
-	0x00050528, /* Controller 5, led 27, offset 1320 */
-	0x0006052c, /* Controller 6, led 27, offset 1324 */
-	0x00070530, /* Controller 7, led 27, offset 1328 */
-	0x00080534, /* Controller 8, led 27, offset 1332 */
-	0x00090538, /* Controller 9, led 27, offset 1336 */
-	0x000a053c, /* Controller 10, led 27, offset 1340 */
-	0x000b0540, /* Controller 11, led 27, offset 1344 */
-	0x00000544, /* Controller 0, led 28, offset 1348 */
-	0x00010548, /* Controller 1, led 28, offset 1352 */
-	0x0002054c, /* Controller 2, led 28, offset 1356 */
-	0x00030550, /* Controller 3, led 28, offset 1360 */
-	0x00040554, /* Controller 4, led 28, offset 1364 */
-	0x00050558, /* Controller 5, led 28, offset 1368 */
-	0x0006055c, /* Controller 6, led 28, offset 1372 */
-	0x00070560, /* Controller 7, led 28, offset 1376 */
-	0x00080564, /* Controller 8, led 28, offset 1380 */
-	0x00090568, /* Controller 9, led 28, offset 1384 */
-	0x000a056c, /* Controller 10, led 28, offset 1388 */
-	0x000b0570, /* Controller 11, led 28, offset 1392 */
-	0x00000574, /* Controller 0, led 29, offset 1396 */
-	0x00010578, /* Controller 1, led 29, offset 1400 */
-	0x0002057c, /* Controller 2, led 29, offset 1404 */
-	0x00030580, /* Controller 3, led 29, offset 1408 */
-	0x00040584, /* Controller 4, led 29, offset 1412 */
-	0x00050588, /* Controller 5, led 29, offset 1416 */
-	0x0006058c, /* Controller 6, led 29, offset 1420 */
-	0x00070590, /* Controller 7, led 29, offset 1424 */
-	0x00080594, /* Controller 8, led 29, offset 1428 */
-	0x00090598, /* Controller 9, led 29, offset 1432 */
-	0x000a059c, /* Controller 10, led 29, offset 1436 */
-	0x000b05a0, /* Controller 11, led 29, offset 1440 */
-	0x000005a4, /* Controller 0, led 30, offset 1444 */
-	0x000105a8, /* Controller 1, led 30, offset 1448 */
-	0x000205ac, /* Controller 2, led 30, offset 1452 */
-	0x000305b0, /* Controller 3, led 30, offset 1456 */
-	0x000405b4, /* Controller 4, led 30, offset 1460 */
-	0x000505b8, /* Controller 5, led 30, offset 1464 */
-	0x000605bc, /* Controller 6, led 30, offset 1468 */
-	0x000705c0, /* Controller 7, led 30, offset 1472 */
-	0x000805c4, /* Controller 8, led 30, offset 1476 */
-	0x000905c8, /* Controller 9, led 30, offset 1480 */
-	0x000a05cc, /* Controller 10, led 30, offset 1484 */
-	0x000b05d0, /* Controller 11, led 30, offset 1488 */
-	0x000005d4, /* Controller 0, led 31, offset 1492 */
-	0x000105d8, /* Controller 1, led 31, offset 1496 */
-	0x000205dc, /* Controller 2, led 31, offset 1500 */
-	0x000305e0, /* Controller 3, led 31, offset 1504 */
-	0x000405e4, /* Controller 4, led 31, offset 1508 */
-	0x000505e8, /* Controller 5, led 31, offset 1512 */
-	0x000605ec, /* Controller 6, led 31, offset 1516 */
-	0x000705f0, /* Controller 7, led 31, offset 1520 */
-	0x000805f4, /* Controller 8, led 31, offset 1524 */
-	0x000905f8, /* Controller 9, led 31, offset 1528 */
-	0x000a05fc, /* Controller 10, led 31, offset 1532 */
-	0x000b0600, /* Controller 11, led 31, offset 1536 */
-	0x00000604, /* Controller 0, led 32, offset 1540 */
-	0x00010608, /* Controller 1, led 32, offset 1544 */
-	0x0002060c, /* Controller 2, led 32, offset 1548 */
-	0x00030610, /* Controller 3, led 32, offset 1552 */
-	0x00040614, /* Controller 4, led 32, offset 1556 */
-	0x00050618, /* Controller 5, led 32, offset 1560 */
-	0x0006061c, /* Controller 6, led 32, offset 1564 */
-	0x00070620, /* Controller 7, led 32, offset 1568 */
-	0x00080624, /* Controller 8, led 32, offset 1572 */
-	0x00090628, /* Controller 9, led 32, offset 1576 */
-	0x000a062c, /* Controller 10, led 32, offset 1580 */
-	0x000b0630, /* Controller 11, led 32, offset 1584 */
+	0x00000000, /* Controller 0, led 16, offset 0 */
+	0x00010000, /* Controller 1, led 16, offset 0 */
+	0x00020000, /* Controller 2, led 16, offset 0 */
+	0x00030000, /* Controller 3, led 16, offset 0 */
+	0x00040000, /* Controller 4, led 16, offset 0 */
+	0x00050000, /* Controller 5, led 16, offset 0 */
+	0x00060000, /* Controller 6, led 16, offset 0 */
+	0x00070000, /* Controller 7, led 16, offset 0 */
+	0x00080000, /* Controller 8, led 16, offset 0 */
+	0x00090000, /* Controller 9, led 16, offset 0 */
+	0x000a0000, /* Controller 10, led 16, offset 0 */
+	0x000b0000, /* Controller 11, led 16, offset 0 */
 	0x00000004, /* Controller 0, offset 4 (direct) */ 
 	0x00000008, /* Controller 0, offset 8 (direct) */ 
 	0x0000000c, /* Controller 0, offset 12 (direct) */ 
@@ -411,23 +219,7 @@ unsigned int ledmapping[] = {
 	0x00000038, /* Controller 0, offset 56 (direct) */ 
 	0x0000003c, /* Controller 0, offset 60 (direct) */ 
 	0x00000040, /* Controller 0, offset 64 (direct) */ 
-	0x00000044, /* Controller 0, offset 68 (direct) */ 
-	0x00000048, /* Controller 0, offset 72 (direct) */ 
-	0x0000004c, /* Controller 0, offset 76 (direct) */ 
-	0x00000050, /* Controller 0, offset 80 (direct) */ 
-	0x00000054, /* Controller 0, offset 84 (direct) */ 
-	0x00000058, /* Controller 0, offset 88 (direct) */ 
-	0x0000005c, /* Controller 0, offset 92 (direct) */ 
-	0x00000060, /* Controller 0, offset 96 (direct) */ 
-	0x00000064, /* Controller 0, offset 100 (direct) */ 
-	0x00000068, /* Controller 0, offset 104 (direct) */ 
-	0x0000006c, /* Controller 0, offset 108 (direct) */ 
-	0x00000070, /* Controller 0, offset 112 (direct) */ 
-	0x00000074, /* Controller 0, offset 116 (direct) */ 
-	0x00000078, /* Controller 0, offset 120 (direct) */ 
-	0x0000007c, /* Controller 0, offset 124 (direct) */ 
-	0x00000080, /* Controller 0, offset 128 (direct) */ 
-	0x00000084, /* Controller 0, offset 132 (direct) */ 
+	0x00000000, /* Controller 0, flush */ 
 	0x00010004, /* Controller 1, offset 4 (direct) */ 
 	0x00010008, /* Controller 1, offset 8 (direct) */ 
 	0x0001000c, /* Controller 1, offset 12 (direct) */ 
@@ -444,23 +236,7 @@ unsigned int ledmapping[] = {
 	0x00010038, /* Controller 1, offset 56 (direct) */ 
 	0x0001003c, /* Controller 1, offset 60 (direct) */ 
 	0x00010040, /* Controller 1, offset 64 (direct) */ 
-	0x00010044, /* Controller 1, offset 68 (direct) */ 
-	0x00010048, /* Controller 1, offset 72 (direct) */ 
-	0x0001004c, /* Controller 1, offset 76 (direct) */ 
-	0x00010050, /* Controller 1, offset 80 (direct) */ 
-	0x00010054, /* Controller 1, offset 84 (direct) */ 
-	0x00010058, /* Controller 1, offset 88 (direct) */ 
-	0x0001005c, /* Controller 1, offset 92 (direct) */ 
-	0x00010060, /* Controller 1, offset 96 (direct) */ 
-	0x00010064, /* Controller 1, offset 100 (direct) */ 
-	0x00010068, /* Controller 1, offset 104 (direct) */ 
-	0x0001006c, /* Controller 1, offset 108 (direct) */ 
-	0x00010070, /* Controller 1, offset 112 (direct) */ 
-	0x00010074, /* Controller 1, offset 116 (direct) */ 
-	0x00010078, /* Controller 1, offset 120 (direct) */ 
-	0x0001007c, /* Controller 1, offset 124 (direct) */ 
-	0x00010080, /* Controller 1, offset 128 (direct) */ 
-	0x00010084, /* Controller 1, offset 132 (direct) */ 
+	0x00010000, /* Controller 1, flush */ 
 	0x00020004, /* Controller 2, offset 4 (direct) */ 
 	0x00020008, /* Controller 2, offset 8 (direct) */ 
 	0x0002000c, /* Controller 2, offset 12 (direct) */ 
@@ -477,23 +253,7 @@ unsigned int ledmapping[] = {
 	0x00020038, /* Controller 2, offset 56 (direct) */ 
 	0x0002003c, /* Controller 2, offset 60 (direct) */ 
 	0x00020040, /* Controller 2, offset 64 (direct) */ 
-	0x00020044, /* Controller 2, offset 68 (direct) */ 
-	0x00020048, /* Controller 2, offset 72 (direct) */ 
-	0x0002004c, /* Controller 2, offset 76 (direct) */ 
-	0x00020050, /* Controller 2, offset 80 (direct) */ 
-	0x00020054, /* Controller 2, offset 84 (direct) */ 
-	0x00020058, /* Controller 2, offset 88 (direct) */ 
-	0x0002005c, /* Controller 2, offset 92 (direct) */ 
-	0x00020060, /* Controller 2, offset 96 (direct) */ 
-	0x00020064, /* Controller 2, offset 100 (direct) */ 
-	0x00020068, /* Controller 2, offset 104 (direct) */ 
-	0x0002006c, /* Controller 2, offset 108 (direct) */ 
-	0x00020070, /* Controller 2, offset 112 (direct) */ 
-	0x00020074, /* Controller 2, offset 116 (direct) */ 
-	0x00020078, /* Controller 2, offset 120 (direct) */ 
-	0x0002007c, /* Controller 2, offset 124 (direct) */ 
-	0x00020080, /* Controller 2, offset 128 (direct) */ 
-	0x00020084, /* Controller 2, offset 132 (direct) */ 
+	0x00020000, /* Controller 2, flush */ 
 	0x00030004, /* Controller 3, offset 4 (direct) */ 
 	0x00030008, /* Controller 3, offset 8 (direct) */ 
 	0x0003000c, /* Controller 3, offset 12 (direct) */ 
@@ -510,23 +270,7 @@ unsigned int ledmapping[] = {
 	0x00030038, /* Controller 3, offset 56 (direct) */ 
 	0x0003003c, /* Controller 3, offset 60 (direct) */ 
 	0x00030040, /* Controller 3, offset 64 (direct) */ 
-	0x00030044, /* Controller 3, offset 68 (direct) */ 
-	0x00030048, /* Controller 3, offset 72 (direct) */ 
-	0x0003004c, /* Controller 3, offset 76 (direct) */ 
-	0x00030050, /* Controller 3, offset 80 (direct) */ 
-	0x00030054, /* Controller 3, offset 84 (direct) */ 
-	0x00030058, /* Controller 3, offset 88 (direct) */ 
-	0x0003005c, /* Controller 3, offset 92 (direct) */ 
-	0x00030060, /* Controller 3, offset 96 (direct) */ 
-	0x00030064, /* Controller 3, offset 100 (direct) */ 
-	0x00030068, /* Controller 3, offset 104 (direct) */ 
-	0x0003006c, /* Controller 3, offset 108 (direct) */ 
-	0x00030070, /* Controller 3, offset 112 (direct) */ 
-	0x00030074, /* Controller 3, offset 116 (direct) */ 
-	0x00030078, /* Controller 3, offset 120 (direct) */ 
-	0x0003007c, /* Controller 3, offset 124 (direct) */ 
-	0x00030080, /* Controller 3, offset 128 (direct) */ 
-	0x00030084, /* Controller 3, offset 132 (direct) */ 
+	0x00030000, /* Controller 3, flush */ 
 	0x00040004, /* Controller 4, offset 4 (direct) */ 
 	0x00040008, /* Controller 4, offset 8 (direct) */ 
 	0x0004000c, /* Controller 4, offset 12 (direct) */ 
@@ -543,23 +287,7 @@ unsigned int ledmapping[] = {
 	0x00040038, /* Controller 4, offset 56 (direct) */ 
 	0x0004003c, /* Controller 4, offset 60 (direct) */ 
 	0x00040040, /* Controller 4, offset 64 (direct) */ 
-	0x00040044, /* Controller 4, offset 68 (direct) */ 
-	0x00040048, /* Controller 4, offset 72 (direct) */ 
-	0x0004004c, /* Controller 4, offset 76 (direct) */ 
-	0x00040050, /* Controller 4, offset 80 (direct) */ 
-	0x00040054, /* Controller 4, offset 84 (direct) */ 
-	0x00040058, /* Controller 4, offset 88 (direct) */ 
-	0x0004005c, /* Controller 4, offset 92 (direct) */ 
-	0x00040060, /* Controller 4, offset 96 (direct) */ 
-	0x00040064, /* Controller 4, offset 100 (direct) */ 
-	0x00040068, /* Controller 4, offset 104 (direct) */ 
-	0x0004006c, /* Controller 4, offset 108 (direct) */ 
-	0x00040070, /* Controller 4, offset 112 (direct) */ 
-	0x00040074, /* Controller 4, offset 116 (direct) */ 
-	0x00040078, /* Controller 4, offset 120 (direct) */ 
-	0x0004007c, /* Controller 4, offset 124 (direct) */ 
-	0x00040080, /* Controller 4, offset 128 (direct) */ 
-	0x00040084, /* Controller 4, offset 132 (direct) */ 
+	0x00040000, /* Controller 4, flush */ 
 	0x00050004, /* Controller 5, offset 4 (direct) */ 
 	0x00050008, /* Controller 5, offset 8 (direct) */ 
 	0x0005000c, /* Controller 5, offset 12 (direct) */ 
@@ -576,23 +304,7 @@ unsigned int ledmapping[] = {
 	0x00050038, /* Controller 5, offset 56 (direct) */ 
 	0x0005003c, /* Controller 5, offset 60 (direct) */ 
 	0x00050040, /* Controller 5, offset 64 (direct) */ 
-	0x00050044, /* Controller 5, offset 68 (direct) */ 
-	0x00050048, /* Controller 5, offset 72 (direct) */ 
-	0x0005004c, /* Controller 5, offset 76 (direct) */ 
-	0x00050050, /* Controller 5, offset 80 (direct) */ 
-	0x00050054, /* Controller 5, offset 84 (direct) */ 
-	0x00050058, /* Controller 5, offset 88 (direct) */ 
-	0x0005005c, /* Controller 5, offset 92 (direct) */ 
-	0x00050060, /* Controller 5, offset 96 (direct) */ 
-	0x00050064, /* Controller 5, offset 100 (direct) */ 
-	0x00050068, /* Controller 5, offset 104 (direct) */ 
-	0x0005006c, /* Controller 5, offset 108 (direct) */ 
-	0x00050070, /* Controller 5, offset 112 (direct) */ 
-	0x00050074, /* Controller 5, offset 116 (direct) */ 
-	0x00050078, /* Controller 5, offset 120 (direct) */ 
-	0x0005007c, /* Controller 5, offset 124 (direct) */ 
-	0x00050080, /* Controller 5, offset 128 (direct) */ 
-	0x00050084, /* Controller 5, offset 132 (direct) */ 
+	0x00050000, /* Controller 5, flush */ 
 	0x00060004, /* Controller 6, offset 4 (direct) */ 
 	0x00060008, /* Controller 6, offset 8 (direct) */ 
 	0x0006000c, /* Controller 6, offset 12 (direct) */ 
@@ -609,23 +321,7 @@ unsigned int ledmapping[] = {
 	0x00060038, /* Controller 6, offset 56 (direct) */ 
 	0x0006003c, /* Controller 6, offset 60 (direct) */ 
 	0x00060040, /* Controller 6, offset 64 (direct) */ 
-	0x00060044, /* Controller 6, offset 68 (direct) */ 
-	0x00060048, /* Controller 6, offset 72 (direct) */ 
-	0x0006004c, /* Controller 6, offset 76 (direct) */ 
-	0x00060050, /* Controller 6, offset 80 (direct) */ 
-	0x00060054, /* Controller 6, offset 84 (direct) */ 
-	0x00060058, /* Controller 6, offset 88 (direct) */ 
-	0x0006005c, /* Controller 6, offset 92 (direct) */ 
-	0x00060060, /* Controller 6, offset 96 (direct) */ 
-	0x00060064, /* Controller 6, offset 100 (direct) */ 
-	0x00060068, /* Controller 6, offset 104 (direct) */ 
-	0x0006006c, /* Controller 6, offset 108 (direct) */ 
-	0x00060070, /* Controller 6, offset 112 (direct) */ 
-	0x00060074, /* Controller 6, offset 116 (direct) */ 
-	0x00060078, /* Controller 6, offset 120 (direct) */ 
-	0x0006007c, /* Controller 6, offset 124 (direct) */ 
-	0x00060080, /* Controller 6, offset 128 (direct) */ 
-	0x00060084, /* Controller 6, offset 132 (direct) */ 
+	0x00060000, /* Controller 6, flush */ 
 	0x00070004, /* Controller 7, offset 4 (direct) */ 
 	0x00070008, /* Controller 7, offset 8 (direct) */ 
 	0x0007000c, /* Controller 7, offset 12 (direct) */ 
@@ -642,23 +338,7 @@ unsigned int ledmapping[] = {
 	0x00070038, /* Controller 7, offset 56 (direct) */ 
 	0x0007003c, /* Controller 7, offset 60 (direct) */ 
 	0x00070040, /* Controller 7, offset 64 (direct) */ 
-	0x00070044, /* Controller 7, offset 68 (direct) */ 
-	0x00070048, /* Controller 7, offset 72 (direct) */ 
-	0x0007004c, /* Controller 7, offset 76 (direct) */ 
-	0x00070050, /* Controller 7, offset 80 (direct) */ 
-	0x00070054, /* Controller 7, offset 84 (direct) */ 
-	0x00070058, /* Controller 7, offset 88 (direct) */ 
-	0x0007005c, /* Controller 7, offset 92 (direct) */ 
-	0x00070060, /* Controller 7, offset 96 (direct) */ 
-	0x00070064, /* Controller 7, offset 100 (direct) */ 
-	0x00070068, /* Controller 7, offset 104 (direct) */ 
-	0x0007006c, /* Controller 7, offset 108 (direct) */ 
-	0x00070070, /* Controller 7, offset 112 (direct) */ 
-	0x00070074, /* Controller 7, offset 116 (direct) */ 
-	0x00070078, /* Controller 7, offset 120 (direct) */ 
-	0x0007007c, /* Controller 7, offset 124 (direct) */ 
-	0x00070080, /* Controller 7, offset 128 (direct) */ 
-	0x00070084, /* Controller 7, offset 132 (direct) */ 
+	0x00070000, /* Controller 7, flush */ 
 	0x00080004, /* Controller 8, offset 4 (direct) */ 
 	0x00080008, /* Controller 8, offset 8 (direct) */ 
 	0x0008000c, /* Controller 8, offset 12 (direct) */ 
@@ -675,23 +355,7 @@ unsigned int ledmapping[] = {
 	0x00080038, /* Controller 8, offset 56 (direct) */ 
 	0x0008003c, /* Controller 8, offset 60 (direct) */ 
 	0x00080040, /* Controller 8, offset 64 (direct) */ 
-	0x00080044, /* Controller 8, offset 68 (direct) */ 
-	0x00080048, /* Controller 8, offset 72 (direct) */ 
-	0x0008004c, /* Controller 8, offset 76 (direct) */ 
-	0x00080050, /* Controller 8, offset 80 (direct) */ 
-	0x00080054, /* Controller 8, offset 84 (direct) */ 
-	0x00080058, /* Controller 8, offset 88 (direct) */ 
-	0x0008005c, /* Controller 8, offset 92 (direct) */ 
-	0x00080060, /* Controller 8, offset 96 (direct) */ 
-	0x00080064, /* Controller 8, offset 100 (direct) */ 
-	0x00080068, /* Controller 8, offset 104 (direct) */ 
-	0x0008006c, /* Controller 8, offset 108 (direct) */ 
-	0x00080070, /* Controller 8, offset 112 (direct) */ 
-	0x00080074, /* Controller 8, offset 116 (direct) */ 
-	0x00080078, /* Controller 8, offset 120 (direct) */ 
-	0x0008007c, /* Controller 8, offset 124 (direct) */ 
-	0x00080080, /* Controller 8, offset 128 (direct) */ 
-	0x00080084, /* Controller 8, offset 132 (direct) */ 
+	0x00080000, /* Controller 8, flush */ 
 	0x00090004, /* Controller 9, offset 4 (direct) */ 
 	0x00090008, /* Controller 9, offset 8 (direct) */ 
 	0x0009000c, /* Controller 9, offset 12 (direct) */ 
@@ -708,23 +372,7 @@ unsigned int ledmapping[] = {
 	0x00090038, /* Controller 9, offset 56 (direct) */ 
 	0x0009003c, /* Controller 9, offset 60 (direct) */ 
 	0x00090040, /* Controller 9, offset 64 (direct) */ 
-	0x00090044, /* Controller 9, offset 68 (direct) */ 
-	0x00090048, /* Controller 9, offset 72 (direct) */ 
-	0x0009004c, /* Controller 9, offset 76 (direct) */ 
-	0x00090050, /* Controller 9, offset 80 (direct) */ 
-	0x00090054, /* Controller 9, offset 84 (direct) */ 
-	0x00090058, /* Controller 9, offset 88 (direct) */ 
-	0x0009005c, /* Controller 9, offset 92 (direct) */ 
-	0x00090060, /* Controller 9, offset 96 (direct) */ 
-	0x00090064, /* Controller 9, offset 100 (direct) */ 
-	0x00090068, /* Controller 9, offset 104 (direct) */ 
-	0x0009006c, /* Controller 9, offset 108 (direct) */ 
-	0x00090070, /* Controller 9, offset 112 (direct) */ 
-	0x00090074, /* Controller 9, offset 116 (direct) */ 
-	0x00090078, /* Controller 9, offset 120 (direct) */ 
-	0x0009007c, /* Controller 9, offset 124 (direct) */ 
-	0x00090080, /* Controller 9, offset 128 (direct) */ 
-	0x00090084, /* Controller 9, offset 132 (direct) */ 
+	0x00090000, /* Controller 9, flush */ 
 	0x000a0004, /* Controller 10, offset 4 (direct) */ 
 	0x000a0008, /* Controller 10, offset 8 (direct) */ 
 	0x000a000c, /* Controller 10, offset 12 (direct) */ 
@@ -741,23 +389,7 @@ unsigned int ledmapping[] = {
 	0x000a0038, /* Controller 10, offset 56 (direct) */ 
 	0x000a003c, /* Controller 10, offset 60 (direct) */ 
 	0x000a0040, /* Controller 10, offset 64 (direct) */ 
-	0x000a0044, /* Controller 10, offset 68 (direct) */ 
-	0x000a0048, /* Controller 10, offset 72 (direct) */ 
-	0x000a004c, /* Controller 10, offset 76 (direct) */ 
-	0x000a0050, /* Controller 10, offset 80 (direct) */ 
-	0x000a0054, /* Controller 10, offset 84 (direct) */ 
-	0x000a0058, /* Controller 10, offset 88 (direct) */ 
-	0x000a005c, /* Controller 10, offset 92 (direct) */ 
-	0x000a0060, /* Controller 10, offset 96 (direct) */ 
-	0x000a0064, /* Controller 10, offset 100 (direct) */ 
-	0x000a0068, /* Controller 10, offset 104 (direct) */ 
-	0x000a006c, /* Controller 10, offset 108 (direct) */ 
-	0x000a0070, /* Controller 10, offset 112 (direct) */ 
-	0x000a0074, /* Controller 10, offset 116 (direct) */ 
-	0x000a0078, /* Controller 10, offset 120 (direct) */ 
-	0x000a007c, /* Controller 10, offset 124 (direct) */ 
-	0x000a0080, /* Controller 10, offset 128 (direct) */ 
-	0x000a0084, /* Controller 10, offset 132 (direct) */ 
+	0x000a0000, /* Controller 10, flush */ 
 	0x000b0004, /* Controller 11, offset 4 (direct) */ 
 	0x000b0008, /* Controller 11, offset 8 (direct) */ 
 	0x000b000c, /* Controller 11, offset 12 (direct) */ 
@@ -774,21 +406,17 @@ unsigned int ledmapping[] = {
 	0x000b0038, /* Controller 11, offset 56 (direct) */ 
 	0x000b003c, /* Controller 11, offset 60 (direct) */ 
 	0x000b0040, /* Controller 11, offset 64 (direct) */ 
-	0x000b0044, /* Controller 11, offset 68 (direct) */ 
-	0x000b0048, /* Controller 11, offset 72 (direct) */ 
-	0x000b004c, /* Controller 11, offset 76 (direct) */ 
-	0x000b0050, /* Controller 11, offset 80 (direct) */ 
-	0x000b0054, /* Controller 11, offset 84 (direct) */ 
-	0x000b0058, /* Controller 11, offset 88 (direct) */ 
-	0x000b005c, /* Controller 11, offset 92 (direct) */ 
-	0x000b0060, /* Controller 11, offset 96 (direct) */ 
-	0x000b0064, /* Controller 11, offset 100 (direct) */ 
-	0x000b0068, /* Controller 11, offset 104 (direct) */ 
-	0x000b006c, /* Controller 11, offset 108 (direct) */ 
-	0x000b0070, /* Controller 11, offset 112 (direct) */ 
-	0x000b0074, /* Controller 11, offset 116 (direct) */ 
-	0x000b0078, /* Controller 11, offset 120 (direct) */ 
-	0x000b007c, /* Controller 11, offset 124 (direct) */ 
-	0x000b0080, /* Controller 11, offset 128 (direct) */ 
-	0x000b0084, /* Controller 11, offset 132 (direct) */ 
+	0x000b0000, /* Controller 11, flush */ 
+	0x00000000,
+	0x00010000,
+	0x00020000,
+	0x00030000,
+	0x00040000,
+	0x00050000,
+	0x00060000,
+	0x00070000,
+	0x00080000,
+	0x00090000,
+	0x000a0000,
+	0x000b0000
 };

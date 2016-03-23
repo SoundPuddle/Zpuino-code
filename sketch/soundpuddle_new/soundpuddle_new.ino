@@ -10,7 +10,7 @@ int incomingByte = 0;
 // // LED arrays
 unsigned long led_buffer[SPOKESIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 uint8_t r = 0x0;
-uint8_t g = 0x0;
+uint8_t g = 0x0A;
 uint8_t b = 0x0;
 uint8_t global = 0x1F;
 
@@ -168,7 +168,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     // LED data packets
     int i,j;
     // start after the first entry (which is the ledstart packet), end before the last packet (ledstop)
-    for (i = 0; i < (SPOKESIZE - 1); i++) {
+    for (i = 0; i < (SPOKESIZE); i++) {
         // increment through each spoke
         for (j = 0; j < (NUMSPOKES); j++) {
             led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
@@ -183,7 +183,7 @@ void led_output_prep() {
     for (i = 0; i < (NUMSPOKES); i++) {
         // the first packet for each spoke
         led_buffer[0][i] = ledstart;
-        led_buffer[SPOKESIZE][i] = ledstop;
+        led_buffer[SPOKESIZE-1][i] = ledstop;
     }
 }
 
@@ -220,6 +220,9 @@ void perform_fft() {
 
 void setup() {
     setup_adc();
+    #if 0
+        init_rgb();
+    #endif
 //     led_zeroall();
     Serial.begin(115200);
     Serial.println("Starting");
@@ -237,12 +240,14 @@ void loop() {
 //         perform_fft();
         led_writeall(r,g,b,global);
 //         led_writefft(global);
-//         led_output_prep();
+        led_output_prep();
         multispi_start();
     }
     while (uart2.available() > 0) {
         Serial.print("rec: ");
         Serial.println(uart2.read(), DEC);
     }
+    uart2.write(0xAB);
+    Serial.print(SPOKESIZE);
      delay(sysdelay);
 }
