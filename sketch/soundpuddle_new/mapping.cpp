@@ -191,18 +191,6 @@ unsigned int ledmapping[] = {
 	0x000902f8, /* Controller 9, led 15, offset 760 */
 	0x000a02fc, /* Controller 10, led 15, offset 764 */
 	0x000b0300, /* Controller 11, led 15, offset 768 */
-	0x00000000, /* Controller 0, led 16, offset 0 */
-	0x00010000, /* Controller 1, led 16, offset 0 */
-	0x00020000, /* Controller 2, led 16, offset 0 */
-	0x00030000, /* Controller 3, led 16, offset 0 */
-	0x00040000, /* Controller 4, led 16, offset 0 */
-	0x00050000, /* Controller 5, led 16, offset 0 */
-	0x00060000, /* Controller 6, led 16, offset 0 */
-	0x00070000, /* Controller 7, led 16, offset 0 */
-	0x00080000, /* Controller 8, led 16, offset 0 */
-	0x00090000, /* Controller 9, led 16, offset 0 */
-	0x000a0000, /* Controller 10, led 16, offset 0 */
-	0x000b0000, /* Controller 11, led 16, offset 0 */
 	0x00000004, /* Controller 0, offset 4 (direct) */ 
 	0x00000008, /* Controller 0, offset 8 (direct) */ 
 	0x0000000c, /* Controller 0, offset 12 (direct) */ 
@@ -219,7 +207,6 @@ unsigned int ledmapping[] = {
 	0x00000038, /* Controller 0, offset 56 (direct) */ 
 	0x0000003c, /* Controller 0, offset 60 (direct) */ 
 	0x00000040, /* Controller 0, offset 64 (direct) */ 
-	0x00000000, /* Controller 0, flush */ 
 	0x00010004, /* Controller 1, offset 4 (direct) */ 
 	0x00010008, /* Controller 1, offset 8 (direct) */ 
 	0x0001000c, /* Controller 1, offset 12 (direct) */ 
@@ -236,7 +223,6 @@ unsigned int ledmapping[] = {
 	0x00010038, /* Controller 1, offset 56 (direct) */ 
 	0x0001003c, /* Controller 1, offset 60 (direct) */ 
 	0x00010040, /* Controller 1, offset 64 (direct) */ 
-	0x00010000, /* Controller 1, flush */ 
 	0x00020004, /* Controller 2, offset 4 (direct) */ 
 	0x00020008, /* Controller 2, offset 8 (direct) */ 
 	0x0002000c, /* Controller 2, offset 12 (direct) */ 
@@ -253,7 +239,6 @@ unsigned int ledmapping[] = {
 	0x00020038, /* Controller 2, offset 56 (direct) */ 
 	0x0002003c, /* Controller 2, offset 60 (direct) */ 
 	0x00020040, /* Controller 2, offset 64 (direct) */ 
-	0x00020000, /* Controller 2, flush */ 
 	0x00030004, /* Controller 3, offset 4 (direct) */ 
 	0x00030008, /* Controller 3, offset 8 (direct) */ 
 	0x0003000c, /* Controller 3, offset 12 (direct) */ 
@@ -270,7 +255,6 @@ unsigned int ledmapping[] = {
 	0x00030038, /* Controller 3, offset 56 (direct) */ 
 	0x0003003c, /* Controller 3, offset 60 (direct) */ 
 	0x00030040, /* Controller 3, offset 64 (direct) */ 
-	0x00030000, /* Controller 3, flush */ 
 	0x00040004, /* Controller 4, offset 4 (direct) */ 
 	0x00040008, /* Controller 4, offset 8 (direct) */ 
 	0x0004000c, /* Controller 4, offset 12 (direct) */ 
@@ -287,7 +271,6 @@ unsigned int ledmapping[] = {
 	0x00040038, /* Controller 4, offset 56 (direct) */ 
 	0x0004003c, /* Controller 4, offset 60 (direct) */ 
 	0x00040040, /* Controller 4, offset 64 (direct) */ 
-	0x00040000, /* Controller 4, flush */ 
 	0x00050004, /* Controller 5, offset 4 (direct) */ 
 	0x00050008, /* Controller 5, offset 8 (direct) */ 
 	0x0005000c, /* Controller 5, offset 12 (direct) */ 
@@ -304,7 +287,6 @@ unsigned int ledmapping[] = {
 	0x00050038, /* Controller 5, offset 56 (direct) */ 
 	0x0005003c, /* Controller 5, offset 60 (direct) */ 
 	0x00050040, /* Controller 5, offset 64 (direct) */ 
-	0x00050000, /* Controller 5, flush */ 
 	0x00060004, /* Controller 6, offset 4 (direct) */ 
 	0x00060008, /* Controller 6, offset 8 (direct) */ 
 	0x0006000c, /* Controller 6, offset 12 (direct) */ 
@@ -321,7 +303,6 @@ unsigned int ledmapping[] = {
 	0x00060038, /* Controller 6, offset 56 (direct) */ 
 	0x0006003c, /* Controller 6, offset 60 (direct) */ 
 	0x00060040, /* Controller 6, offset 64 (direct) */ 
-	0x00060000, /* Controller 6, flush */ 
 	0x00070004, /* Controller 7, offset 4 (direct) */ 
 	0x00070008, /* Controller 7, offset 8 (direct) */ 
 	0x0007000c, /* Controller 7, offset 12 (direct) */ 
@@ -338,7 +319,6 @@ unsigned int ledmapping[] = {
 	0x00070038, /* Controller 7, offset 56 (direct) */ 
 	0x0007003c, /* Controller 7, offset 60 (direct) */ 
 	0x00070040, /* Controller 7, offset 64 (direct) */ 
-	0x00070000, /* Controller 7, flush */ 
 	0x00080004, /* Controller 8, offset 4 (direct) */ 
 	0x00080008, /* Controller 8, offset 8 (direct) */ 
 	0x0008000c, /* Controller 8, offset 12 (direct) */ 
@@ -355,7 +335,6 @@ unsigned int ledmapping[] = {
 	0x00080038, /* Controller 8, offset 56 (direct) */ 
 	0x0008003c, /* Controller 8, offset 60 (direct) */ 
 	0x00080040, /* Controller 8, offset 64 (direct) */ 
-	0x00080000, /* Controller 8, flush */ 
 	0x00090004, /* Controller 9, offset 4 (direct) */ 
 	0x00090008, /* Controller 9, offset 8 (direct) */ 
 	0x0009000c, /* Controller 9, offset 12 (direct) */ 
@@ -372,7 +351,6 @@ unsigned int ledmapping[] = {
 	0x00090038, /* Controller 9, offset 56 (direct) */ 
 	0x0009003c, /* Controller 9, offset 60 (direct) */ 
 	0x00090040, /* Controller 9, offset 64 (direct) */ 
-	0x00090000, /* Controller 9, flush */ 
 	0x000a0004, /* Controller 10, offset 4 (direct) */ 
 	0x000a0008, /* Controller 10, offset 8 (direct) */ 
 	0x000a000c, /* Controller 10, offset 12 (direct) */ 
@@ -389,7 +367,6 @@ unsigned int ledmapping[] = {
 	0x000a0038, /* Controller 10, offset 56 (direct) */ 
 	0x000a003c, /* Controller 10, offset 60 (direct) */ 
 	0x000a0040, /* Controller 10, offset 64 (direct) */ 
-	0x000a0000, /* Controller 10, flush */ 
 	0x000b0004, /* Controller 11, offset 4 (direct) */ 
 	0x000b0008, /* Controller 11, offset 8 (direct) */ 
 	0x000b000c, /* Controller 11, offset 12 (direct) */ 
@@ -406,7 +383,6 @@ unsigned int ledmapping[] = {
 	0x000b0038, /* Controller 11, offset 56 (direct) */ 
 	0x000b003c, /* Controller 11, offset 60 (direct) */ 
 	0x000b0040, /* Controller 11, offset 64 (direct) */ 
-	0x000b0000, /* Controller 11, flush */ 
 	0x00000000,
 	0x00010000,
 	0x00020000,

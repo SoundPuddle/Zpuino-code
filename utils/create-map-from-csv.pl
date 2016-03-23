@@ -79,7 +79,7 @@ for(;;) {
 };
 
 print STDERR "Writing direct mapping at ", tell $out, "\n";
-my $offdirectmap = tell($out)/3;
+my $offdirectmap = (tell($out)/3) - 1; # modified to abstract LED start/stop frame for APA102 support
 
 for (my $i=0;$i<$numctrl;$i++) {
     my $items=0;
@@ -113,23 +113,24 @@ for (my $i=0;$i<$numctrl;$i++) {
 }
 
 # print STDERR "Writing flush code at ", tell $out, "\n";
-# my $flushsize=0;
+my $flushsize=0;
 # my $flushoff_words= tell($out)/3;
+my $flushoff_words=0; # added to abstract LED start/stop frame for APA102
 
-# for (my $i=0;$i<$numctrl;$i++) {
-#     my $cnt = $sizes[$i];
-# 
-#     $cnt+=63;
-#     $cnt = int(($cnt/64));
-# 
-#     while ($cnt) {
-#         print $out pack("Cn",$i,0);
-#         my $sep = ($cnt==1 && $i==($numctrl-1)) ? "":",";
-#         printf $outc "\t0x%08x".$sep."\n", 0 + ($i<<16);
+for (my $i=0;$i<$numctrl;$i++) {
+    my $cnt = $sizes[$i];
+
+    $cnt+=63;
+    $cnt = int(($cnt/64));
+
+    while ($cnt) {
+        print $out pack("Cn",$i,0);
+        my $sep = ($cnt==1 && $i==($numctrl-1)) ? "":",";
+        printf $outc "\t0x%08x".$sep."\n", 0 + ($i<<16);
 #         $flushsize++;
-#         $cnt--;
-#     }
-# }
+        $cnt--;
+    }
+}
 print $outc "};\n";
 
 print STDERR "End at ", tell $out, "\n";
@@ -139,8 +140,8 @@ open($outc, '>', "mapping.h");
 print $outc "#ifndef __MAPPING_H__\n";
 print $outc "#define __MAPPING_H__\n";
 print $outc "extern unsigned int ledmapping[]; \n";
-# print $outc "#define FLUSH_OFFSET $flushoff_words /* In words */\n";
-# print $outc "#define FLUSH_SIZE $flushsize /* In words */\n";
+print $outc "#define FLUSH_OFFSET $flushoff_words /* In words */\n";
+print $outc "#define FLUSH_SIZE $flushsize /* In words */\n";
 print $outc "#define DIRECTMAP_OFFSET $offdirectmap /* In words */ \n" ;
 print $outc "#define NUMLEDS $total \n" ;
 print $outc "#endif\n" ;

@@ -1,5 +1,7 @@
 #include "soundpuddle.h"
 
+int testcommand = 2; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
+
 // System control
 int sysdelay = 5; // main while loop delay in (mS)
 
@@ -10,7 +12,7 @@ int incomingByte = 0;
 // // LED arrays
 unsigned long led_buffer[SPOKESIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 uint8_t r = 0x0;
-uint8_t g = 0x0A;
+uint8_t g = 0x0;
 uint8_t b = 0x0;
 uint8_t global = 0x1F;
 
@@ -184,13 +186,14 @@ void led_output_prep() {
         // the first packet for each spoke
         led_buffer[0][i] = ledstart;
         led_buffer[SPOKESIZE-1][i] = ledstop;
+        led_buffer[testcommand][i] = 0xFF001000; // this line inserts an arbitary pixel at the same location on each spoke, to test out UART commands. TODO remove me
     }
 }
 
 void led_writefft(uint8_t global_val) {
     // LED data packets
     int i,j;
-    for (i = 1; i < (SPOKESIZE + 1); i++) {
+    for (i = 1; i < (SPOKESIZE); i++) {
         for (j = 0; j < (NUMSPOKES); j++) {
             led_buffer[i][j] = assemble_ledpacket(fft_buffer[j], 0, 0, global_val);
         }
@@ -237,17 +240,18 @@ void loop() {
     }
     if (samp_done == 1) {
         samp_done=0;
-//         perform_fft();
-        led_writeall(r,g,b,global);
-//         led_writefft(global);
+        perform_fft();
+//         led_writeall(r,g,b,global);
+        led_writefft(global);
         led_output_prep();
         multispi_start();
     }
     while (uart2.available() > 0) {
+        testcommand = uart2.read();
         Serial.print("rec: ");
-        Serial.println(uart2.read(), DEC);
+        Serial.println(testcommand, DEC);
     }
-    uart2.write(0xAB);
+//     uart2.write(0xAB);
     Serial.print(SPOKESIZE);
-     delay(sysdelay);
+    delay(sysdelay);
 }

@@ -18,7 +18,7 @@
 #define ledstart 0x00000000
 #define ledstop 0xFFFFFFFF
 #define ledoff 0xFF000000
-#define ledtest 0xFF001000
+#define ledtest 0xFFF0F0F0
 
 // SoundPuddle MK2 megawing pin assignment definitions
 // #define SP_MK2_FLASHCS_PIN WING_B_5
