@@ -2,13 +2,14 @@
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
     
 // System control
-int sysdelay = 5; // main while loop delay in (mS)
+int sysdelay = 1; // main while loop delay in (mS)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
+volatile int fft_buffer_ready = 0;
 volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
 volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
-volatile int samp_done = 0; // flag to indicate status of the ADC sampling period
+volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC sampling period
 static int adc_buffer[FFT_SIZE];
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
@@ -48,7 +49,7 @@ while(n--) {SPI3DATA=0};
 
 
 // this function 
-void init_multispi() {    
+void init_multispi() {
     REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
     REGISTER(HWMULTISPIBASE,2)= (unsigned long)&led_buffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 5076  - we use this /3 minus one
@@ -56,11 +57,8 @@ void init_multispi() {
     REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 }
 
-void controller_wait_ready() {
-    while (REGISTER(HWMULTISPIBASE,0)!=0);
-}
-
 void multispi_start() {
+    led_output_prep(); // put the LED start and stop frames into the led_buffer[]
     REGISTER(HWMULTISPIBASE,0)=1;
 }
 void init_adc() {
@@ -103,7 +101,7 @@ void init_uart2() {
 
 // FFT sample acquisition interrupt function.
 void _zpu_interrupt() {
-    if (samp_done==0) { // Just to make sure we don't overwrite buffer while we copy it.
+    if (adc_buffer_ready==0) { // Just to make sure we don't overwrite buffer while we copy it.
         FFT_type::fixed fv;
         FFT_type::fixed winv;
         fv.v = ((int)(USPIDATA & 0xffff)-2047);
@@ -117,7 +115,7 @@ void _zpu_interrupt() {
         USPIDATA16=0; // Start reading next sample
         adc_buffer_ptr++;
         if (adc_buffer_ptr==FFT_SIZE) {
-            samp_done = 1;
+            adc_buffer_ready = 1;
             adc_buffer_ptr = 0;
         }
     }
@@ -160,16 +158,20 @@ void led_writefft(uint8_t global_val) {
             led_buffer[i][j] = assemble_ledframe(fft_buffer[j], 0, 0, global_val);
         }
     }
+    fft_buffer_ready = 0;
+    multispi_start();
 }
 
 void perform_fft() {
     int i;
+    fft_buffer_ready = 0;
     //move the ADC buffer to the FFT real input
     for (i=0; i<FFT_SIZE; i++) {
         myfft.in_real[i].v= adc_buffer[i];
         myfft.in_im[i].v=0;
     }
-    myfft.doFFT();    
+    adc_buffer_ready=0; // we're done with this ADC buffer window, enable sampling for the next window
+    myfft.doFFT();
     for (i=0; i<NUMSPOKES; i++) {
         FFT_type::fixed v = myfft.in_real[i];
         v.v>>=2;
@@ -181,6 +183,7 @@ void perform_fft() {
         v.v = fsqrt16(v.asNative());
         fft_buffer[i] = v.v >> 8;
     }
+    fft_buffer_ready = 1;
 }
 
 void init_usbserial() {
@@ -202,16 +205,13 @@ void setup() {
 }
 
 void loop() {
-    if (samp_done == 0) {
-        controller_wait_ready();
-    }
-    if (samp_done == 1) {
-        samp_done=0;
+    if (adc_buffer_ready == 1) {
         perform_fft();
 //         led_writeall(r,g,b,global);
+    }
+    if (fft_buffer_ready == 0) {}
+    else if (fft_buffer_ready == 1) {
         led_writefft(global);
-        led_output_prep();
-        multispi_start();
     }
     while (uart2.available() > 0) {
         uartcommand = uart2.read();
