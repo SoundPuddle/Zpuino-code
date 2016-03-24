@@ -1,46 +1,22 @@
 #include "soundpuddle.h"
-
-int testcommand = 2; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
-
+HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
+    
 // System control
 int sysdelay = 5; // main while loop delay in (mS)
+volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
-// UART interface to WT32 Bluetooth 2.0 module
-HardwareSerial uart2(12); // initial uart2, connection to Zpuino IO slot 12
-int incomingByte = 0; 
-
-// // LED arrays
-unsigned long led_buffer[SPOKESIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-uint8_t r = 0x0;
-uint8_t g = 0x0;
-uint8_t b = 0x0;
-uint8_t global = 0x1F;
-
-// // ADC and FFT configuration
-#define APPLY_LOWPASS /* Apply a low-pass filter to FFT output */
-fp32_16_16 gain = 5.0; /* Gain */
-int ADC_channel = 0x02; // specify the ADC channel (0x02 == internal mic)
-unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44};
-unsigned fft_buffer[NUMSPOKES];
-volatile unsigned int adcbuffer_ptr;
-// volatile unsigned int samp_counter; // variable to count FFT acquisition cycles
-volatile int samp_done;
+// ADC and FFT configuration
+volatile int samp_done = 0; // flag to indicate status of the ADC sampling period
+static int adc_buffer[FFT_SIZE];
+unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
+volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
+volatile unsigned fft_buffer[NUMSPOKES]; // this array contains the full output of the FFT
 typedef FFT_1024 FFT_type;
 static FFT_type myfft;
-static int adcbuffer[FFT_SIZE];
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
-// extern void printhex(unsigned int c);
 
-// // HSV color space controls
-// float hue_offset = 0.7; // phase shift for the HSV function (range 0.00-0.99)
-// float hsvalue_floor = 2; // linear offest for the value of the HSV color generation function
-// float rgain = 1.0; // red channel gain for the HSV color generation function
-// float ggain = 0.9; // gree channel gain for the HSV color generation function
-// float bgain = 0.9; // blue channel gain for the HSV color generation function
-// int rgb_max = 32 * 3; //maximum sum of the r, g, b channels
-
-// //Color function
+// lookup table generation function
 extern void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
 
 // FPGA configuration
@@ -63,52 +39,13 @@ while(n--) {SPI3DATA=0};
 #endif
 
 
-void setup_multispi() {    
+// this function 
+void init_multispi() {    
     REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
     REGISTER(HWMULTISPIBASE,2)= (unsigned long)&led_buffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     // Writing direct mapping at 5076  - we use this /3 minus one
     REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
     REGISTER(HWMULTISPIBASE,4)= 0x54 ;
-    /* Set up timer for a SAMPLING_FREQ frequency */
-    TMR0CTL = 0;
-    TMR0CNT = 0;
-    TMR0CMP = (CLK_FREQ / SAMPLING_FREQ )- 1;
-    TMR0CTL = _BV(TCTLENA)|_BV(TCTLCCM)|_BV(TCTLDIR)| _BV(TCTLIEN);
-    INTRMASK = _BV(INTRLINE_TIMER0); // Enable Timer0 interrupt
-    INTRCTL=1;  /* Enable interrupts */
-}
-
-void setup_adc() {
-    adcbuffer_ptr = 0;
-    samp_done = 0;
-    pinMode(ADC_MOSI,   OUTPUT);
-    pinMode(ADC_SCK,    OUTPUT);
-    pinMode(ADC_CS,    OUTPUT);
-    pinMode(ADC_MISO,   INPUT);
-    pinModePPS(ADC_MOSI,HIGH);
-    pinModePPS(ADC_SCK, HIGH);
-    digitalWrite(ADC_CS,HIGH);
-    outputPinForFunction(ADC_MOSI, IOPIN_USPI_MOSI);
-    outputPinForFunction(ADC_SCK, IOPIN_USPI_SCK);
-    inputPinForFunction(ADC_MISO, IOPIN_USPI_MISO);
-    /* CP1 -> 010 prescaler (4), frequency 24MHz) */
-    USPICTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP1)|BIT(SPICP0);
-    // Start reading immediatly */
-    digitalWrite(ADC_CS,LOW);
-    //USPIDATA16 = 0;
-    USPIDATA = 0;
-    USPIDATA = 0;
-    setup_multispi();
-}
-
-void setup_uart2() {
-    pinMode(SP_MK2_UART2TX_PIN, OUTPUT); // UART2 TX pin for BT module communication
-    pinModePPS(SP_MK2_UART2TX_PIN, HIGH); // Turn on the TX pin
-    outputPinForFunction(SP_MK2_UART2TX_PIN, 6); // Map output PP6 to the physical pin
-    pinMode(SP_MK2_UART2RX_PIN, INPUT); // UART2 RX pin for BT module communication
-    inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
-    uart2.begin(115200);
-    //uart2.println("Starting");
 }
 
 void controller_wait_ready() {
@@ -118,6 +55,45 @@ void controller_wait_ready() {
 void multispi_start() {
     REGISTER(HWMULTISPIBASE,0)=1;
 }
+void init_adc() {
+    volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
+    volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
+    adc_buffer_ptr = 0;
+    pinMode(ADC_MOSI,   OUTPUT);
+    pinMode(ADC_SCK,    OUTPUT);
+    pinMode(ADC_CS,    OUTPUT);
+    pinMode(ADC_MISO,   INPUT);
+    pinModePPS(ADC_MOSI,HIGH); // peripheral pin select mode for HDL interface to SPI module
+    pinModePPS(ADC_SCK, HIGH); // peripheral pin select mode for HDL interface to SPI module
+    digitalWrite(ADC_CS,HIGH);
+    outputPinForFunction(ADC_MOSI, IOPIN_USPI_MOSI); 
+    outputPinForFunction(ADC_SCK, IOPIN_USPI_SCK);
+    inputPinForFunction(ADC_MISO, IOPIN_USPI_MISO);
+    /* CP1 -> 010 prescaler (4), frequency 24MHz) */
+    USPICTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP1)|BIT(SPICP0);
+    // Start reading immediatly */
+    digitalWrite(ADC_CS,LOW);
+    //USPIDATA16 = 0;
+    USPIDATA = 0;
+    USPIDATA = 0; // This line was added twice experimentally, not sure why it is needed for stable init. TODO: figure out why
+    /* Set up timer for a DEFAULT_SAMPLING_FREQ frequency */
+    TMR0CTL = 0;
+    TMR0CNT = 0;
+    TMR0CMP = (CLK_FREQ / DEFAULT_SAMPLING_FREQ )- 1;
+    TMR0CTL = _BV(TCTLENA)|_BV(TCTLCCM)|_BV(TCTLDIR)| _BV(TCTLIEN);
+    INTRMASK = _BV(INTRLINE_TIMER0); // Enable Timer0 interrupt
+    INTRCTL=1;  /* Enable interrupts */
+}
+
+void init_uart2() {
+    pinMode(SP_MK2_UART2TX_PIN, OUTPUT); // UART2 TX pin for BT module communication
+    pinModePPS(SP_MK2_UART2TX_PIN, HIGH); // Turn on the TX pin
+    outputPinForFunction(SP_MK2_UART2TX_PIN, 6); // Map output PP6 to the physical pin
+    pinMode(SP_MK2_UART2RX_PIN, INPUT); // UART2 RX pin for BT module communication
+    inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
+    uart2.begin(115200); // set the baud rate
+    //uart2.println("Starting");
+}
 
 // FFT sample acquisition interrupt function.
 void _zpu_interrupt() {
@@ -126,76 +102,56 @@ void _zpu_interrupt() {
         FFT_type::fixed winv;
         fv.v = ((int)(USPIDATA & 0xffff)-2047);
         // Multiply by window
-        winv.v = window[adcbuffer_ptr];
-        adcbuffer[adcbuffer_ptr] = winv.v;
+        winv.v = window[adc_buffer_ptr];
+        adc_buffer[adc_buffer_ptr] = winv.v;
         // Advance file
         SPIDATA32=0;
         fv *= winv;
-        adcbuffer[adcbuffer_ptr] = fv.v;
+        adc_buffer[adc_buffer_ptr] = fv.v;
         USPIDATA16=0; // Start reading next sample
-        adcbuffer_ptr++;
-        if (adcbuffer_ptr==FFT_SIZE) {
+        adc_buffer_ptr++;
+        if (adc_buffer_ptr==FFT_SIZE) {
             samp_done = 1;
-            adcbuffer_ptr = 0;
+            adc_buffer_ptr = 0;
         }
     }
-    USPIDATA16=(ADC_channel<<11); // Start reading next sample
+    USPIDATA16=(adc_channel<<11); // Start reading next sample
     TMR0CTL &= ~(BIT(TCTLIF));
 }
 
-// This function writes the zero packet to all the LEDs in the array. This handles internal memory data only, it does not initiate SPI communication
-// void led_zeroall() {
-//     int i,j;
-//     for (i = 0; i < (SPOKESIZE + 1); i++) {
-//         for (j = 0; j < (NUMSPOKES); j++) {
-//             led_buffer[i][j] = ledoff;
-//         }
-//     }
-// }
 
-// // This function writes the LED start and stop packets to the LED memory space
-// void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
-//     // LED data packets
-//     int i,j;
-//     // start after the first entry (which is the ledstart packet), end before the last packet (ledstop)
-//     for (i = 1; i < (SPOKESIZE - 1); i++) {
-//         // increment through each spoke
-//         for (j = 0; j < (NUMSPOKES); j++) {
-//             led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
-//         }
-//     }
-// }
-// This function writes the LED start and stop packets to the LED memory space
+// This function writes the LED start and stop frames to the LED memory space
 void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
-    // LED data packets
+    // LED data frames
     int i,j;
-    // start after the first entry (which is the ledstart packet), end before the last packet (ledstop)
-    for (i = 0; i < (SPOKESIZE); i++) {
+    // start after the first entry (which is the ledstart frame), end before the last frame (ledstop)
+    for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
         // increment through each spoke
         for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_ledpacket(r_val, g_val, b_val, global_val);
+            led_buffer[i][j] = assemble_ledframe(r_val, g_val, b_val, global_val);
         }
     }
 }
 
-// This function writes the LED start and stop packets to the LED memory space
+// This function writes the LED start and stop frames to the LED memory space
 void led_output_prep() {
     int i,j;
-    // put start and stop packets into LED memory space
+    // put start and stop frames into LED memory space
     for (i = 0; i < (NUMSPOKES); i++) {
-        // the first packet for each spoke
+        // the first frame for each spoke
         led_buffer[0][i] = ledstart;
-        led_buffer[SPOKESIZE-1][i] = ledstop;
-        led_buffer[testcommand][i] = 0xFF001000; // this line inserts an arbitary pixel at the same location on each spoke, to test out UART commands. TODO remove me
+        led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop;
+        led_buffer[uartcommand][i] = 0xFF001000; // this line inserts an arbitary pixel at the same location on each spoke, to test out UART commands. TODO remove me
     }
 }
 
+// This function uses the FFT bin defined by fft_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
 void led_writefft(uint8_t global_val) {
-    // LED data packets
+    // LED data frames
     int i,j;
-    for (i = 1; i < (SPOKESIZE); i++) {
+    for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
         for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_ledpacket(fft_buffer[j], 0, 0, global_val);
+            led_buffer[i][j] = assemble_ledframe(fft_buffer[j], 0, 0, global_val);
         }
     }
 }
@@ -204,7 +160,7 @@ void perform_fft() {
     int i;
     //move the ADC buffer to the FFT real input
     for (i=0; i<FFT_SIZE; i++) {
-        myfft.in_real[i].v= adcbuffer[i];
+        myfft.in_real[i].v= adc_buffer[i];
         myfft.in_im[i].v=0;
     }
     myfft.doFFT();    
@@ -221,17 +177,28 @@ void perform_fft() {
     }
 }
 
-void setup() {
-    setup_adc();
-    #if 0
-        init_rgb();
-    #endif
-//     led_zeroall();
+void init_usbserial() {
     Serial.begin(115200);
-    Serial.println("Starting");
+    Serial.println("Init");
+}
+
+void init_leds() {
+    // LED arrays
+    // REMEMBER that LED indexing begins at 1, because the 0 entry is the start frame
+    volatile uint8_t r = 0x0; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+    volatile uint8_t g = 0x0; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+    volatile uint8_t b = 0x0; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+    volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
+    led_writeall(0,0,0,global); // make sure the LED arrays init at 0
+    init_multispi(); // setup the HDL multi-channel SPI module to access MCU memory space
+}
+
+void setup() {
+    init_adc(); // start the interrupt timer and SPI communication with the external ADC
+    init_leds(); // setup the LED and color arrays
+    init_usbserial(); // turn on the ZPUino serial port connected to FTDI>USB
+    init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
-    delay(5);
-    setup_uart2();
 }
 
 void loop() {
@@ -247,11 +214,11 @@ void loop() {
         multispi_start();
     }
     while (uart2.available() > 0) {
-        testcommand = uart2.read();
+        uartcommand = uart2.read();
         Serial.print("rec: ");
-        Serial.println(testcommand, DEC);
+        Serial.println(uartcommand, DEC);
     }
 //     uart2.write(0xAB);
-    Serial.print(SPOKESIZE);
+    Serial.print(SPOKEBUFFERSIZE);
     delay(sysdelay);
 }
