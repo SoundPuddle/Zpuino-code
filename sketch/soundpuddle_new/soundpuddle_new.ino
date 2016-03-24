@@ -6,6 +6,8 @@ int sysdelay = 5; // main while loop delay in (mS)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
+volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
+volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
 volatile int samp_done = 0; // flag to indicate status of the ADC sampling period
 static int adc_buffer[FFT_SIZE];
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
@@ -15,6 +17,12 @@ typedef FFT_1024 FFT_type;
 static FFT_type myfft;
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
+
+// REMEMBER that LED indexing begins at 1, because the 0 entry is the start frame
+volatile uint8_t r = 0x0; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t g = 0x0; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t b = 0x0; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
 
 // lookup table generation function
 extern void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
@@ -56,8 +64,6 @@ void multispi_start() {
     REGISTER(HWMULTISPIBASE,0)=1;
 }
 void init_adc() {
-    volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
-    volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
     adc_buffer_ptr = 0;
     pinMode(ADC_MOSI,   OUTPUT);
     pinMode(ADC_SCK,    OUTPUT);
@@ -183,12 +189,6 @@ void init_usbserial() {
 }
 
 void init_leds() {
-    // LED arrays
-    // REMEMBER that LED indexing begins at 1, because the 0 entry is the start frame
-    volatile uint8_t r = 0x0; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-    volatile uint8_t g = 0x0; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-    volatile uint8_t b = 0x0; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-    volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
     led_writeall(0,0,0,global); // make sure the LED arrays init at 0
     init_multispi(); // setup the HDL multi-channel SPI module to access MCU memory space
 }
