@@ -14,7 +14,7 @@ static int adc_buffer[FFT_SIZE];
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
 volatile unsigned fft_buffer[NUMSPOKES]; // this array contains the full output of the FFT
-typedef FFT_1024 FFT_type;
+typedef FFT_64 FFT_type;
 static FFT_type myfft;
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -144,7 +144,7 @@ void led_output_prep() {
     for (i = 0; i < (NUMSPOKES); i++) {
         // the first frame for each spoke
         led_buffer[0][i] = ledstart;
-        led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop;
+//         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
         led_buffer[uartcommand][i] = 0xFF001000; // this line inserts an arbitary pixel at the same location on each spoke, to test out UART commands. TODO remove me
     }
 }
@@ -202,11 +202,14 @@ void setup() {
     init_usbserial(); // turn on the ZPUino serial port connected to FTDI>USB
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
+    pinMode(SP_MK2_GPIO, OUTPUT);
 }
 
 void loop() {
     if (adc_buffer_ready == 1) {
+        digitalWrite(SP_MK2_GPIO, HIGH);
         perform_fft();
+        digitalWrite(SP_MK2_GPIO, LOW);
 //         led_writeall(r,g,b,global);
     }
     if (fft_buffer_ready == 0) {}

@@ -23,6 +23,7 @@
 // SoundPuddle MK2 megawing pin assignment definitions
 // #define SP_MK2_FLASHCS_PIN WING_B_5
 // #define SP_MK2_MIDIIN_PIN WING_B_4
+#define SP_MK2_GPIO WING_B_6
 #define SP_MK2_UART2RX_PIN WING_B_7
 #define SP_MK2_UART2TX_PIN WING_B_8
 // #define SP_MK2_BTRESET_PIN WING_B_10
