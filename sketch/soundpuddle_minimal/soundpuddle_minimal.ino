@@ -1,4 +1,5 @@
 #include "soundpuddle.h"
+#define SP_MK2_GPIO WING_B_6
 
 // System control
 int sysdelay = 1; // main while loop delay in (mS)
@@ -206,6 +207,7 @@ void setup() {
     inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
     uart2.begin(9600);
     //uart2.println("Starting");
+    pinMode(SP_MK2_GPIO, OUTPUT);
 }
 
 void loop() {
@@ -216,7 +218,9 @@ void loop() {
     if (samp_done == 1) {
         samp_done=0;
         //digitalWrite(24, HIGH);
+        digitalWrite(SP_MK2_GPIO, HIGH);
         perform_fft();
+        digitalWrite(SP_MK2_GPIO, LOW);
         //digitalWrite(24, LOW);
         //led_writeall(r,g,b,global);
         led_writefft(global);
