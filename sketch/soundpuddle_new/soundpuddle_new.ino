@@ -3,6 +3,7 @@ HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUin
     
 // System control
 int sysdelay = 1; // main while loop delay in (mS)
+int vis_mode = 1; // variable for visualization switch mode (0=debug, 1=ripple, 2=spiral)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
@@ -19,10 +20,9 @@ static FFT_type myfft;
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
-// REMEMBER that LED indexing begins at 1, because the 0 entry is the start frame
-volatile uint8_t r = 0x0; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint8_t g = 0x0; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint8_t b = 0x0; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t r = 0x01; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t b = 0x02; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
 
 // lookup table generation function
@@ -135,6 +135,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
             led_buffer[i][j] = assemble_ledframe(r_val, g_val, b_val, global_val);
         }
     }
+    multispi_start();
 }
 
 // This function writes the LED start and stop frames to the LED memory space
@@ -151,39 +152,45 @@ void led_output_prep() {
 
 // This function uses the FFT bin defined by fft_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
 void led_writefft(uint8_t global_val) {
-    // LED data frames
-    int i,j;
-    for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
-        for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_ledframe(fft_buffer[j], 0, 0, global_val);
+    if (fft_buffer_ready == 1) {
+        // LED data frames
+        int i,j;
+        for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
+            for (j = 0; j < (NUMSPOKES); j++) {
+                led_buffer[i][j] = assemble_ledframe(fft_buffer[j], 0, 0, global_val);
+            }
         }
+        fft_buffer_ready = 0;
+        multispi_start();
     }
-    fft_buffer_ready = 0;
-    multispi_start();
 }
 
 void perform_fft() {
-    int i;
-    fft_buffer_ready = 0;
-    //move the ADC buffer to the FFT real input
-    for (i=0; i<FFT_SIZE; i++) {
-        myfft.in_real[i].v= adc_buffer[i];
-        myfft.in_im[i].v=0;
+    if (adc_buffer_ready == 1) {
+//         digitalWrite(SP_MK2_GPIO, HIGH);
+        int i;
+        fft_buffer_ready = 0;
+        //move the ADC buffer to the FFT real input
+        for (i=0; i<FFT_SIZE; i++) {
+            myfft.in_real[i].v= adc_buffer[i];
+            myfft.in_im[i].v=0;
+        }
+        adc_buffer_ready=0; // we're done with this ADC buffer window, enable sampling for the next window
+        myfft.doFFT();
+        for (i=0; i<NUMSPOKES; i++) {
+            FFT_type::fixed v = myfft.in_real[i];
+            v.v>>=2;
+            v *= v;
+            FFT_type::fixed u = myfft.in_im[i];
+            u.v>>=2;
+            u *= u;
+            v += u;
+            v.v = fsqrt16(v.asNative());
+            fft_buffer[i] = v.v >> 8;
+        }
+        fft_buffer_ready = 1;
+//         digitalWrite(SP_MK2_GPIO, LOW);
     }
-    adc_buffer_ready=0; // we're done with this ADC buffer window, enable sampling for the next window
-    myfft.doFFT();
-    for (i=0; i<NUMSPOKES; i++) {
-        FFT_type::fixed v = myfft.in_real[i];
-        v.v>>=2;
-        v *= v;
-        FFT_type::fixed u = myfft.in_im[i];
-        u.v>>=2;
-        u *= u;
-        v += u;
-        v.v = fsqrt16(v.asNative());
-        fft_buffer[i] = v.v >> 8;
-    }
-    fft_buffer_ready = 1;
 }
 
 void init_usbserial() {
@@ -196,32 +203,103 @@ void init_leds() {
     init_multispi(); // setup the HDL multi-channel SPI module to access MCU memory space
 }
 
+// this function is used in parsing serial input
+void read_uart_comma() {
+    uartcommand = uart2.read(); // read the first byte on the buffer
+    if (uartcommand != ',') {
+        Serial.print("SYNTAX ERROR");
+    }
+}
+
+void read_uart_command() {
+    if (uart2.available() > 0) {
+        if (uart2.read() == ',') {
+            switch (uart2.read()) { // this switch case is layer 1
+                case 'M': // mode
+                    Serial.print("M");
+                    if (uart2.read() == ',') {
+                        switch (uart2.read()) { // this switch case is layer 1
+                            case 'R': // ripple mode
+                                Serial.print("R");
+                            break;
+                            case 'S': // spiral mode
+                                Serial.print("S");
+                            break;
+                            case 'I': // ring mode
+                                Serial.print("I");
+                            break;
+                            case 'V': // VU mode
+                                Serial.print("V");
+                            break;
+                            case 'C': // solid color mode
+                                Serial.print("C");
+                                if (uart2.read() == ',') {
+                                    switch (uart2.read()) { // this switch case is layer 1
+                                        case 'E': // mode
+                                            Serial.print("E");
+                                            vis_mode = 2; // set the mode to "solid color"
+                                        break;
+                                        case 'R': // RGB
+                                            Serial.print("R");
+                                            r = (char)( (int)uart2.read() - (int)48 ); // convert the incoming char to an integer
+//                                                 r = uart2.read();
+                                            g = uart2.read();
+                                            b = uart2.read();
+//                                             uart2.print(r);
+//                                             Serial.print(g);
+//                                             Serial.print(b);                                                
+                                        break;
+                                        case 'H': // HSV
+                                            Serial.print("H");
+                                        break;
+                                    }
+                                }
+                                else {Serial.print("SYNTAX ERROR");}
+                            break;
+                        }
+                    }
+                    else {Serial.print("SYNTAX ERROR");}
+                break;
+                case 'H': // HSV
+                    Serial.print("H");
+                break;
+                case 'F': // FFT
+                    Serial.print("F");
+                break;
+                case 'A': // ADC
+                    Serial.print("A");
+                break;
+            }
+        }
+        else {uart2.print("SYNTAX ERROR");}
+    }
+}
+
 void setup() {
     init_adc(); // start the interrupt timer and SPI communication with the external ADC
     init_leds(); // setup the LED and color arrays
     init_usbserial(); // turn on the ZPUino serial port connected to FTDI>USB
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
-    pinMode(SP_MK2_GPIO, OUTPUT);
+//     pinMode(SP_MK2_GPIO, OUTPUT);
 }
 
 void loop() {
-    if (adc_buffer_ready == 1) {
-        digitalWrite(SP_MK2_GPIO, HIGH);
-        perform_fft();
-        digitalWrite(SP_MK2_GPIO, LOW);
-//         led_writeall(r,g,b,global);
-    }
-    if (fft_buffer_ready == 0) {}
-    else if (fft_buffer_ready == 1) {
-        led_writefft(global);
-    }
-    while (uart2.available() > 0) {
-        uartcommand = uart2.read();
-        Serial.print("rec: ");
-        Serial.println(uartcommand, DEC);
-    }
-//     uart2.write(0xAB);
-    Serial.print(SPOKEBUFFERSIZE);
+    read_uart_command();
+    // switch to select the visualization mode
+    switch (vis_mode) {
+        // debug case, bring solid color
+        case 2:
+            led_writeall(r,g,b,global);
+        break;
+        // ripple mode case "soundpuddle classic" TODO finish this
+        case 1:
+            perform_fft();
+            led_writefft(global);
+        break;
+        default:
+            Serial.print("DEFAULT CASE");
+        break;
+  }
     delay(sysdelay);
 }
