@@ -203,72 +203,72 @@ void init_leds() {
     init_multispi(); // setup the HDL multi-channel SPI module to access MCU memory space
 }
 
-// this function is used in parsing serial input
-void read_uart_comma() {
-    uartcommand = uart2.read(); // read the first byte on the buffer
-    if (uartcommand != ',') {
-        Serial.print("SYNTAX ERROR");
-    }
-}
-
 void read_uart_command() {
     if (uart2.available() > 0) {
-        if (uart2.read() == ',') {
-            switch (uart2.read()) { // this switch case is layer 1
-                case 'M': // mode
-                    Serial.print("M");
-                    if (uart2.read() == ',') {
-                        switch (uart2.read()) { // this switch case is layer 1
-                            case 'R': // ripple mode
-                                Serial.print("R");
-                            break;
-                            case 'S': // spiral mode
-                                Serial.print("S");
-                            break;
-                            case 'I': // ring mode
-                                Serial.print("I");
-                            break;
-                            case 'V': // VU mode
-                                Serial.print("V");
-                            break;
-                            case 'C': // solid color mode
-                                Serial.print("C");
-                                if (uart2.read() == ',') {
-                                    switch (uart2.read()) { // this switch case is layer 1
-                                        case 'E': // mode
-                                            Serial.print("E");
-                                            vis_mode = 2; // set the mode to "solid color"
-                                        break;
-                                        case 'R': // RGB
-                                            Serial.print("R");
-                                            r = (char)( (int)uart2.read() - (int)48 ); // convert the incoming char to an integer
-//                                                 r = uart2.read();
-                                            g = uart2.read();
-                                            b = uart2.read();
-//                                             uart2.print(r);
-//                                             Serial.print(g);
-//                                             Serial.print(b);                                                
-                                        break;
-                                        case 'H': // HSV
-                                            Serial.print("H");
-                                        break;
+        if (uart2.read() == '!') {
+            uart2.print("!");
+            if (uart2.read() == ',') {
+                uart2.print(",");
+                uartcommand = uart2.read();
+                switch (uartcommand) { // this switch case is layer 1
+                    case 'M': // mode
+                        uart2.print("M");
+                        if (uart2.read() == ',') {
+                            uart2.print(",");
+                            uartcommand = uart2.read();
+                            switch (uartcommand) { // this switch case is layer 1
+                                case 'R': // ripple mode
+                                    uart2.print("R");
+                                break;
+                                case 'S': // spiral mode
+                                    uart2.print("S");
+                                break;
+                                case 'I': // ring mode
+                                    uart2.print("I");
+                                break;
+                                case 'V': // VU mode
+                                    uart2.print("V");
+                                break;
+                                case 'C': // solid color mode
+                                    if (uart2.read() == ',') {
+                                        uart2.print(",");
+                                        uartcommand = uart2.read();
+                                        switch (uartcommand) { // this switch case is layer 1
+                                            case 'E': // mode
+                                                uart2.print("E");
+                                                vis_mode = 2; // set the mode to "solid color"
+                                            break;
+                                            case 'R': // RGB
+                                                uart2.print("R");
+                                                r = (char)( (int)uart2.read() - (int)48 ); // convert the incoming char to an integer
+    //                                                 r = uart2.read();
+                                                g = (char)( (int)uart2.read() - (int)48 ); // convert the incoming char to an integer
+                                                b = (char)( (int)uart2.read() - (int)48 ); // convert the incoming char to an integer
+                                                uart2.print(r);
+                                                uart2.print(g);
+                                                uart2.print(b);                                                
+                                            break;
+                                            case 'H': // HSV
+                                                uart2.print("H");
+                                            break;
+                                        }
                                     }
-                                }
-                                else {Serial.print("SYNTAX ERROR");}
-                            break;
+                                    else {uart2.print("SYNTAX ERROR");}
+                                break;
+                            }
                         }
-                    }
-                    else {Serial.print("SYNTAX ERROR");}
-                break;
-                case 'H': // HSV
-                    Serial.print("H");
-                break;
-                case 'F': // FFT
-                    Serial.print("F");
-                break;
-                case 'A': // ADC
-                    Serial.print("A");
-                break;
+                        else {uart2.print("S-ERROR");}
+                    break;
+                    case 'H': // HSV
+                        uart2.print("H");
+                    break;
+                    case 'F': // FFT
+                        uart2.print("F");
+                    break;
+                    case 'A': // ADC
+                        uart2.print("A");
+                    break;
+                }
             }
         }
         else {uart2.print("SYNTAX ERROR");}
@@ -298,7 +298,7 @@ void loop() {
             led_writefft(global);
         break;
         default:
-            Serial.print("DEFAULT CASE");
+            uart2.print("DEFAULT CASE");
         break;
   }
     delay(sysdelay);
