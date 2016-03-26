@@ -13,9 +13,9 @@ volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
 volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC sampling period
 static int adc_buffer[FFT_SIZE];
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
-volatile unsigned fft_buffer[NUMSPOKES]; // this array contains the full output of the FFT
-typedef FFT_64 FFT_type;
+// volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
+volatile unsigned fft_buffer[FFT_SIZE]; // this array contains the full output of the FFT
+typedef FFT_128 FFT_type;
 static FFT_type myfft;
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -167,7 +167,7 @@ void led_writefft(uint8_t global_val) {
 
 void perform_fft() {
     if (adc_buffer_ready == 1) {
-//         digitalWrite(SP_MK2_GPIO, HIGH);
+        digitalWrite(SP_MK2_GPIO, HIGH);
         int i;
         fft_buffer_ready = 0;
         //move the ADC buffer to the FFT real input
@@ -177,7 +177,8 @@ void perform_fft() {
         }
         adc_buffer_ready=0; // we're done with this ADC buffer window, enable sampling for the next window
         myfft.doFFT();
-        for (i=0; i<NUMSPOKES; i++) {
+        // this for loop can run the entire length of FFT_SIZE/2, or an abbreviated length of only the BIN we're interested in for the visualization application
+        for (i=0; i<(FFT_SIZE/2); i++) {
             FFT_type::fixed v = myfft.in_real[i];
             v.v>>=2;
             v *= v;
@@ -189,7 +190,12 @@ void perform_fft() {
             fft_buffer[i] = v.v >> 8;
         }
         fft_buffer_ready = 1;
-//         digitalWrite(SP_MK2_GPIO, LOW);
+        digitalWrite(SP_MK2_GPIO, LOW);
+        for (i=0; i<(FFT_SIZE/2); i++) {
+            Serial.print(fft_buffer[i]);
+            Serial.print(",");
+        }
+        Serial.println("Done");
     }
 }
 
@@ -281,7 +287,7 @@ void setup() {
     init_usbserial(); // turn on the ZPUino serial port connected to FTDI>USB
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
-//     pinMode(SP_MK2_GPIO, OUTPUT);
+    pinMode(SP_MK2_GPIO, OUTPUT);
 }
 
 void loop() {
