@@ -3,7 +3,7 @@ HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUin
 
 // System control
 int sysdelay = 1; // main while loop delay in (mS)
-int vis_mode = 1; // variable for visualization switch mode (0=debug, 1=ripple, 2=spiral)
+int vis_mode = 'R'; // variable for visualization switch mode (0=debug, 1=ripple, 2=spiral)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
@@ -213,31 +213,19 @@ void init_leds() {
     init_multispi(); // setup the HDL multi-channel SPI module to access MCU memory space
 }
 
+// this function reads three ascii bytes off the serial port and assembles one integer [ex: ascii('1' '0' '2') -> int(102)]
 int read3charmakeint() {
     int command;
     int i = 0;
-    uart2.print('?');
     for (i = 0; i < 3; i++) {
-        uartcommands[i] = (int)uart2.read() - (int)48;
-        //         uartcommands[i] = uart2.read();
-        //         uart2.print(uartcommands[i]);
-        uart2.print(char(uartcommands[i]));
+        uartcommands[i] = (int)uart2.read() - (int)48; // assume incoming byte is an ascii number (0 - 9), turn it into an int
     }
-    uart2.print('?');
     command = (uartcommands[0]*100)+(uartcommands[1]*10)+(uartcommands[2]); // assembly a three digit int (0-999) from thee incoming ascii chars
     return(command);
 }
 
-int checkuartcomma() {
-    if (uart2.read() == ',') {
-        return 1;
-    }
-    else {
-        return 0;
-    }
-}
-
 int checkuartstop() {
+//     delayMicroseconds(500);
     if (uart2.read() == '#') {
         return 1;
     }
@@ -249,13 +237,13 @@ int checkuartstop() {
 // this function parses an incoming serial packet, returns 1 on success and 0 on an error
 int read_uart_command() {
     if (uart2.available() > 0) {
-        if (uart2.read() != '!') {return 0;} // check for the start byte '!'
-        if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
+        delayMicroseconds(800); // we don't want to get ahead of the incoming packet, which is slow (115200 baud) TODO: make this a timer for a flag, rather than a no-op delay
         switch (uart2.read()) { // this switch case is layer 1
+            default: // the default case (if the incoming byte does not match a defined command) is to return an error
+                return 0;
+                break;
             case 'M': // mode
                 uart2.print("M");
-                if (checkuartcomma() == 0) {return 0;}
-                uart2.print("J");
                 switch (uart2.read()) { // this switch case parses options for the application "mode"
                     case 'R': // ripple mode
                         uart2.print("R");
@@ -268,38 +256,39 @@ int read_uart_command() {
                         break;
                     case 'V': // VU mode
                         uart2.print("V");
-                        break;
-                    case 'C': // solid color mode
-                        if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
-                        uart2.print(",");
                         switch (uart2.read()) { // this switch case for solid-color mode options
                             case 'E': // mode
                                 uart2.print("E");
                                 // verify that we read the stop byte, and this was a valid packet. If so act on the command
                                 if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
-                                vis_mode = 2; // set the mode to "solid color"
+                                vis_mode = 'V'; // set the mode to "solid color"
+                                break;
+                        }
+                        break;
+                    case 'C': // solid color mode
+                        uart2.print("C");
+                        switch (uart2.read()) { // this switch case for solid-color mode options
+                            case 'E': // mode
+                                uart2.print("E");
+                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                vis_mode = 'C'; // set the mode to "solid color"
                                 break;
                             case 'R': // RGB
                                 uart2.print("R");
-                                if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
                                 r_command = read3charmakeint();
-                                uart2.print(r_command);                                                
-                                if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
                                 g_command = read3charmakeint();
-                                if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
                                 b_command = read3charmakeint();
                                 if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                uart2.print("#");
                                 r = r_command;
                                 g = g_command;
                                 b = b_command;
-                                uart2.print(r);
-                                uart2.print(g);
-                                uart2.print(b);
                                 break;
                             case 'H': // HSV
                                 uart2.print("H");
+                                // TODO add HSV control option
                                 break;
-                
                         }
                         break;
                 }
@@ -331,13 +320,18 @@ void loop() {
     // switch to select the visualization mode
     switch (vis_mode) {
         // debug case, bring solid color
-        case 2:
-            led_writeall(r,g,b,global);
+        case 'R': // ripple mode case "soundpuddle classic" TODO finish this
             break;
-            // ripple mode case "soundpuddle classic" TODO finish this
-        case 1:
+        case 'S': // spiral mode
+            break;
+        case 'I': // ring mode
+            break;
+        case 'V': // VU meter mode
             perform_fft();
             led_writefft(global);
+            break;
+        case 'C': // solid-color mode
+            led_writeall(r,g,b,global);
             break;
         default:
             uart2.print("DEFAULT CASE");
