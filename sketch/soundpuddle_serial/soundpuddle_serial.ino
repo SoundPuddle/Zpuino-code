@@ -1,6 +1,6 @@
 #include "soundpuddle.h"
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
-    
+
 // System control
 int sysdelay = 1; // main while loop delay in (mS)
 int vis_mode = 1; // variable for visualization switch mode (0=debug, 1=ripple, 2=spiral)
@@ -63,6 +63,7 @@ void init_multispi() {
 
 void multispi_start() {
     led_output_prep(); // put the LED start and stop frames into the led_buffer[]
+    delayMicroseconds(1); // this delay was added experimentally, the system hangs if there is no delay at all (VHD timing issue? TODO: debug)
     REGISTER(HWMULTISPIBASE,0)=1;
 }
 void init_adc() {
@@ -149,8 +150,7 @@ void led_output_prep() {
     for (i = 0; i < (NUMSPOKES); i++) {
         // the first frame for each spoke
         led_buffer[0][i] = ledstart;
-//         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
-        led_buffer[uartcommand][i] = 0xFF001000; // this line inserts an arbitary pixel at the same location on each spoke, to test out UART commands. TODO remove me
+        //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
     }
 }
 
@@ -219,8 +219,8 @@ int read3charmakeint() {
     uart2.print('?');
     for (i = 0; i < 3; i++) {
         uartcommands[i] = (int)uart2.read() - (int)48;
-//         uartcommands[i] = uart2.read();
-//         uart2.print(uartcommands[i]);
+        //         uartcommands[i] = uart2.read();
+        //         uart2.print(uartcommands[i]);
         uart2.print(char(uartcommands[i]));
     }
     uart2.print('?');
@@ -228,85 +228,92 @@ int read3charmakeint() {
     return(command);
 }
 
-void read_uart_command() {
+int checkuartcomma() {
+    if (uart2.read() == ',') {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+int checkuartstop() {
+    if (uart2.read() == '#') {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+// this function parses an incoming serial packet, returns 1 on success and 0 on an error
+int read_uart_command() {
     if (uart2.available() > 0) {
-        if (uart2.read() == '!') {
-            uart2.print("!");
-            if (uart2.read() == ',') {
-                uart2.print(",");
-                uartcommand = uart2.read();
-                switch (uartcommand) { // this switch case is layer 1
-                    case 'M': // mode
-                        uart2.print("M");
-                        if (uart2.read() == ',') {
-                            uart2.print(",");
-                            uartcommand = uart2.read();
-                            switch (uartcommand) { // this switch case is layer 1
-                                case 'R': // ripple mode
-                                    uart2.print("R");
+        if (uart2.read() != '!') {return 0;} // check for the start byte '!'
+        if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
+        switch (uart2.read()) { // this switch case is layer 1
+            case 'M': // mode
+                uart2.print("M");
+                if (checkuartcomma() == 0) {return 0;}
+                uart2.print("J");
+                switch (uart2.read()) { // this switch case parses options for the application "mode"
+                    case 'R': // ripple mode
+                        uart2.print("R");
+                        break;
+                    case 'S': // spiral mode
+                        uart2.print("S");
+                        break;
+                    case 'I': // ring mode
+                        uart2.print("I");
+                        break;
+                    case 'V': // VU mode
+                        uart2.print("V");
+                        break;
+                    case 'C': // solid color mode
+                        if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
+                        uart2.print(",");
+                        switch (uart2.read()) { // this switch case for solid-color mode options
+                            case 'E': // mode
+                                uart2.print("E");
+                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                vis_mode = 2; // set the mode to "solid color"
                                 break;
-                                case 'S': // spiral mode
-                                    uart2.print("S");
+                            case 'R': // RGB
+                                uart2.print("R");
+                                if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
+                                r_command = read3charmakeint();
+                                uart2.print(r_command);                                                
+                                if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
+                                g_command = read3charmakeint();
+                                if (checkuartcomma() == 0) {return 0;} // check for the deliminator ','
+                                b_command = read3charmakeint();
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                r = r_command;
+                                g = g_command;
+                                b = b_command;
+                                uart2.print(r);
+                                uart2.print(g);
+                                uart2.print(b);
                                 break;
-                                case 'I': // ring mode
-                                    uart2.print("I");
+                            case 'H': // HSV
+                                uart2.print("H");
                                 break;
-                                case 'V': // VU mode
-                                    uart2.print("V");
-                                break;
-                                case 'C': // solid color mode
-                                    if (uart2.read() == ',') {
-                                        uart2.print(",");
-                                        uartcommand = uart2.read();
-                                        switch (uartcommand) { // this switch case is layer 1
-                                            case 'E': // mode
-                                                uart2.print("E");
-                                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
-                                                if (uart2.read() == '#') {
-                                                    vis_mode = 2; // set the mode to "solid color"
-                                                }
-                                            break;
-                                            case 'R': // RGB
-                                                uart2.print("R");
-                                                if (uart2.read() != ',') {uart2.print("SYNTAX ERROR"); break;} // verify that next character is a deliminator, or else pop and error and break
-                                                r_command = read3charmakeint();
-                                                uart2.print(r_command);                                                
-                                                if (uart2.read() != ',') {uart2.print("SYNTAX ERROR"); break;} // verify that next character is a deliminator, or else pop and error and break
-                                                g_command = read3charmakeint();
-                                                if (uart2.read() != ',') {uart2.print("SYNTAX ERROR"); break;} // verify that next character is a deliminator, or else pop and error and break
-                                                b_command = read3charmakeint();
-                                                if (uart2.read() != '#') {uart2.print("SYNTAX ERROR"); break;}  // verify that we read the stop byte, and this was a valid packet. If so update values
-                                                r = r_command;
-                                                g = g_command;
-                                                b = b_command;
-                                                uart2.print(r);
-                                                uart2.print(g);
-                                                uart2.print(b);
-                                                }
-                                            break;
-                                            case 'H': // HSV
-                                                uart2.print("H");
-                                            break;
-                                        }
-                                    }
-//                                     else {uart2.print("SYNTAX ERROR");}
-                                break;
-                            }
-//                         else {uart2.print("SYNTAX ERROR");}
-//                     break;
-                    case 'H': // HSV
-                        uart2.print("H");
-                    break;
-                    case 'F': // FFT
-                        uart2.print("F");
-                    break;
-                    case 'A': // ADC
-                        uart2.print("A");
-                    break;
+                
+                        }
+                        break;
                 }
-            }
+                break;
+            case 'H': // HSV
+                uart2.print("H");
+                break;
+            case 'F': // FFT
+                uart2.print("F");
+                break;
+            case 'A': // ADC
+                uart2.print("A");
+                break;
         }
-        else {uart2.print("SYNTAX ERROR");}
     }
 }
 
@@ -326,15 +333,15 @@ void loop() {
         // debug case, bring solid color
         case 2:
             led_writeall(r,g,b,global);
-        break;
-        // ripple mode case "soundpuddle classic" TODO finish this
+            break;
+            // ripple mode case "soundpuddle classic" TODO finish this
         case 1:
             perform_fft();
             led_writefft(global);
-        break;
+            break;
         default:
             uart2.print("DEFAULT CASE");
-        break;
-  }
+            break;
+    }
     delay(sysdelay);
 }
