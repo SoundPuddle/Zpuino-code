@@ -2,20 +2,24 @@
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
 
 // System control
-int sysdelay = 1; // main while loop delay in (mS)
-int vis_mode = 'R'; // variable for visualization switch mode (0=debug, 1=ripple, 2=spiral)
+int sysdelay = 1; // main while loop delay in (uS)
+int vis_mode = 'V'; // variable for visualization switch mode (0=debug, R=ripple, S=spiral, V=VU mmeter, C=solid color)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
+int fft_div = 4; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
+int fft_subwindowsize = FFT_SIZE/fft_div;
 volatile int fft_buffer_ready = 0;
 volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
 volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
 volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC sampling period
-static int adc_buffer[FFT_SIZE];
+volatile int adc_buffer_quarter = 0; // flag to indicate what quarter the adc buffer is in (first, second, third, first)
+static int adc_buffer[FFT_SIZE]; // this array contains the input from the ADC, it is what the interrupt function writes into
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 // volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
-volatile unsigned fft_buffer[FFT_SIZE]; // this array contains the full output of the FFT
-typedef FFT_128 FFT_type;
+unsigned fft_output_buffer[FFT_SIZE/2]; // this array contains the full output of the FFT
+int fft_input_buffer[FFT_SIZE]; // this array contains the ADC input values for the FFT
+typedef FFT_256 FFT_type;
 static FFT_type myfft;
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -104,31 +108,6 @@ void init_uart2() {
     //uart2.println("Starting");
 }
 
-// FFT sample acquisition interrupt function.
-void _zpu_interrupt() {
-    if (adc_buffer_ready==0) { // Just to make sure we don't overwrite buffer while we copy it.
-        FFT_type::fixed fv;
-        FFT_type::fixed winv;
-        fv.v = ((int)(USPIDATA & 0xffff)-2047);
-        // Multiply by window
-        winv.v = window[adc_buffer_ptr];
-        adc_buffer[adc_buffer_ptr] = winv.v;
-        // Advance file
-        SPIDATA32=0;
-        fv *= winv;
-        adc_buffer[adc_buffer_ptr] = fv.v;
-        USPIDATA16=0; // Start reading next sample
-        adc_buffer_ptr++;
-        if (adc_buffer_ptr==FFT_SIZE) {
-            adc_buffer_ready = 1;
-            adc_buffer_ptr = 0;
-        }
-    }
-    USPIDATA16=(adc_channel<<11); // Start reading next sample
-    TMR0CTL &= ~(BIT(TCTLIF));
-}
-
-
 // This function writes the LED start and stop frames to the LED memory space
 void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
     // LED data frames
@@ -154,14 +133,14 @@ void led_output_prep() {
     }
 }
 
-// This function uses the FFT bin defined by fft_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
+// This function uses the FFT bin defined by fft_output_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
 void led_writefft(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
         // LED data frames
         int i,j;
         for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[i][j] = assemble_ledframe(fft_buffer[j], 0, 0, global_val);
+                led_buffer[i][j] = assemble_ledframe(fft_output_buffer[j], 0, 0, global_val);
             }
         }
         fft_buffer_ready = 0;
@@ -169,17 +148,77 @@ void led_writefft(uint8_t global_val) {
     }
 }
 
+// FFT sample acquisition interrupt function.
+void _zpu_interrupt() {
+    if (adc_buffer_ready == 0) { // Just to make sure we don't overwrite buffer while we copy it.
+        FFT_type::fixed fv;
+        FFT_type::fixed winv;
+//         fv.v = ((int)(USPIDATA & 0xffff)-2047);
+//         Serial.print("A");
+//         Serial.print((int)(USPIDATA & 0xffff)-2047);
+//         Serial.println();
+        // Multiply by window
+//         winv.v = window[adc_buffer_ptr];
+//         adc_buffer[adc_buffer_ptr] = winv.v;
+        // Advance file
+        adc_buffer[adc_buffer_ptr] = ((int)(USPIDATA & 0xffff)-2047);
+        SPIDATA32 = 0;
+        fv *= winv;
+//         USPIDATA16 = 0; // Start reading next sample
+        adc_buffer_ptr++;
+        if (adc_buffer_ptr > (fft_subwindowsize)) {
+            adc_buffer_ready = 1;
+            adc_buffer_ptr = 0;
+//             digitalWrite(SP_MK2_GPIO, HIGH);
+//             digitalWrite(SP_MK2_GPIO, LOW);
+        }
+    }
+    USPIDATA16 = (adc_channel << 11); // Start reading next sample
+    TMR0CTL &= ~(BIT(TCTLIF));
+}
+
 void perform_fft() {
+    int i = 0;
     if (adc_buffer_ready == 1) {
+        if (fft_div > 1) { // shift the input array if we are doing sub-window FFTs
+            for (i = 0; i < (FFT_SIZE - fft_subwindowsize); i++) {
+                fft_input_buffer[FFT_SIZE - 1 - i] = fft_input_buffer[FFT_SIZE - fft_subwindowsize - 1 - i];
+            }
+            for (i = 0; i < fft_subwindowsize; i++) {
+                fft_input_buffer[i] = adc_buffer[i];
+            }
+//     Serial.print(adc_buffer[0]);
+//     Serial.print(";");
+//     Serial.print(adc_buffer[31]);
+//     Serial.print(";");
+//     Serial.print(adc_buffer[63]);
+//     Serial.print(";");
+//     Serial.print(adc_buffer[95]);
+//     Serial.print(";");
+//     Serial.print(adc_buffer[127]);
+//     Serial.print(";;;");
+//     Serial.print(fft_input_buffer[0]);
+//     Serial.print(";");
+//     Serial.print(fft_input_buffer[63]);
+//     Serial.print(";");
+//     Serial.print(fft_input_buffer[127]);
+//     Serial.print(";");
+//     Serial.print(fft_input_buffer[191]);
+//     Serial.print(";");
+//     Serial.print(fft_input_buffer[255]);
+//     Serial.print(";");
+//     Serial.print(millis());
+//     Serial.println();
+        }
         digitalWrite(SP_MK2_GPIO, HIGH);
         int i;
         fft_buffer_ready = 0;
         //move the ADC buffer to the FFT real input
         for (i=0; i<FFT_SIZE; i++) {
-            myfft.in_real[i].v= adc_buffer[i];
+            myfft.in_real[i].v= fft_input_buffer[i];
             myfft.in_im[i].v=0;
         }
-        adc_buffer_ready=0; // we're done with this ADC buffer window, enable sampling for the next window
+        adc_buffer_ready = 0; // we're done with this ADC buffer window, enable sampling for the next window
         myfft.doFFT();
         // this for loop can run the entire length of FFT_SIZE/2, or an abbreviated length of only the BIN we're interested in for the visualization application
         for (i=0; i<(FFT_SIZE/2); i++) {
@@ -191,15 +230,15 @@ void perform_fft() {
             u *= u;
             v += u;
             v.v = fsqrt16(v.asNative());
-            fft_buffer[i] = v.v >> 8;
+            fft_output_buffer[i] = v.v >> 8;
         }
         fft_buffer_ready = 1;
         digitalWrite(SP_MK2_GPIO, LOW);
-        for (i=0; i<(FFT_SIZE/2); i++) {
-            Serial.print(fft_buffer[i]);
-            Serial.print(",");
-        }
-        Serial.println("Done");
+//         for (i=0; i<(FFT_SIZE); i++) {
+//             Serial.print(fft_input_buffer[i]);
+//             Serial.print(";");
+//         }
+//         Serial.println();
     }
 }
 
@@ -337,5 +376,12 @@ void loop() {
             uart2.print("DEFAULT CASE");
             break;
     }
-    delay(sysdelay);
+    delayMicroseconds(sysdelay);
+//     digitalWrite(SP_MK2_GPIO, HIGH);
+//     int qq;
+//     for (qq=0; qq < FFT_SIZE/8; qq++) {
+//         Serial.print(adc_buffer[0]);
+//         Serial.println();
+//     }
+//     digitalWrite(SP_MK2_GPIO, LOW);
 }
