@@ -7,6 +7,7 @@ int vis_mode = 'R'; // variable for visualization switch mode (0=debug, R=ripple
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
+float adc_gain = 1;
 int fft_div = 4; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
 int fft_subwindowsize = FFT_SIZE/fft_div;
 volatile int fft_buffer_ready = 0;
@@ -30,11 +31,16 @@ unsigned int hsvtable[256];
 volatile uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint8_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
-volatile uint8_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
-volatile uint8_t b_command = 0x0; // temporary variable to hold an incoming "b" command recieved from the serial interface
-volatile uint8_t uartcommands[3]; // temporary variable array, used in converting three ascii bytes to a three digit number
+volatile uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
+volatile uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
+volatile uint16_t b_command = 0x0; // temporary variable to hold an incoming "b" command recieved from the serial interface
+volatile uint16_t uartcommands[3]; // temporary variable array, used in converting three ascii bytes to a three digit number
 volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
+volatile uint16_t  hue_min_command;
+volatile uint16_t  hue_max_command;
+volatile uint16_t  val_min_command;
+volatile uint16_t  val_max_command;
+volatile uint16_t adc_gain_command;
 
 // lookup table generation function
 // extern void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
@@ -185,7 +191,7 @@ void _zpu_interrupt() {
         //         winv.v = window[adc_buffer_ptr];
         //         adc_buffer[adc_buffer_ptr] = winv.v;
         // Advance file
-        adc_buffer[adc_buffer_ptr] = ((int)(USPIDATA & 0xffff)-2047);
+        adc_buffer[adc_buffer_ptr] = adc_gain * ((int)(USPIDATA & 0xffff)-2047); // apply the floating-point gain and store the value TODO: Make this an integer operation to improve speed
         SPIDATA32 = 0;
         fv *= winv;
         //         USPIDATA16 = 0; // Start reading next sample
@@ -209,7 +215,7 @@ void perform_fft() {
                 fft_input_buffer[FFT_SIZE - 1 - i] = fft_input_buffer[FFT_SIZE - fft_subwindowsize - 1 - i];
             }
             for (i = 0; i < fft_subwindowsize; i++) {
-                fft_input_buffer[i] = adc_buffer[i];
+                fft_input_buffer[i] = (adc_buffer[i]); // apply the user-controllable input gain here
             }
         }
         //         digitalWrite(SP_MK2_GPIO, HIGH);
@@ -352,7 +358,7 @@ int checkuartstop() {
 // this function parses an incoming serial packet, returns 1 on success and 0 on an error
 int read_uart_command() {
     if (uart2.available() > 0) {
-        delayMicroseconds(800); // we don't want to get ahead of the incoming packet, which is slow (115200 baud) TODO: make this a timer for a flag, rather than a no-op delay
+        delayMicroseconds(1200); // we don't want to get ahead of the incoming packet, which is slow (115200 baud) TODO: make this a timer for a flag, rather than a no-op delay
         switch (uart2.read()) { // this switch case is layer 1
             default: // the default case (if the incoming byte does not match a defined command) is to return an error
                 return 0;
@@ -426,15 +432,37 @@ int read_uart_command() {
                                 }
                 }
                 break;
-                                    case 'H': // HSV
-                                        uart2.print("H");
-                                        break;
-                                    case 'F': // FFT
-                                        uart2.print("F");
-                                        break;
-                                    case 'A': // ADC
-                                        uart2.print("A");
-                                        break;
+            case 'H': // HSV
+                uart2.print("H");
+                switch (uart2.read()) { // this switch case for solid-color mode options
+                case 'M': // RGB
+                    uart2.print("M");
+                    hue_min_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                    hue_max_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                    val_min_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                    val_max_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                    if (checkuartstop() == 0) {return 0;}
+                    uart2.print("#");
+                    make_rgb_lut(hue_min_command, hue_max_command, val_min_command, val_max_command, 32);
+                    break;
+                }
+                break;
+            case 'F': // FFT
+                uart2.print("F");
+                break;
+            case 'A': // ADC
+                uart2.print("A");
+                switch (uart2.read()) { // this switch case for solid-color mode options
+                case 'G': // RGB
+                    uart2.print("G");
+                    adc_gain_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                    if (checkuartstop() == 0) {return 0;}
+                    uart2.print("#");
+                    adc_gain = adc_gain_command/100.0;
+                    uart2.print(adc_gain);
+                    break;
+                }
+                break;
         }
     }
 }
