@@ -12,7 +12,7 @@
 
 // LED array dimensions
 #define NUMSPOKES 12 // number of strips (index at 1, i.e. 12 strips = 12)
-#define SPOKEBUFFERSIZE 16 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
+#define SPOKEBUFFERSIZE 512 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
 
 // LED packets (vary by LED type)
 #define ledstart 0x00000000

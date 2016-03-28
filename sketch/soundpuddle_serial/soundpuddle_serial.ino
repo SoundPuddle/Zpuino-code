@@ -3,7 +3,7 @@ HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUin
 
 // System control
 int sysdelay = 1; // main while loop delay in (uS)
-int vis_mode = 'V'; // variable for visualization switch mode (0=debug, R=ripple, S=spiral, V=VU mmeter, C=solid color)
+int vis_mode = 'R'; // variable for visualization switch mode (0=debug, R=ripple, S=spiral, V=VU mmeter, C=solid color)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
@@ -24,6 +24,9 @@ static FFT_type myfft;
 extern unsigned int window[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
+// hsv control
+unsigned int hsvtable[256];
+
 volatile uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
@@ -34,7 +37,7 @@ volatile uint8_t uartcommands[3]; // temporary variable array, used in convertin
 volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
 
 // lookup table generation function
-extern void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
+// extern void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
 
 // FPGA configuration
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -134,17 +137,38 @@ void led_output_prep() {
 }
 
 // This function uses the FFT bin defined by fft_output_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
-void led_writefft(uint8_t global_val) {
+void led_writefft_vu(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
+        digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
         int i,j;
         for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[i][j] = assemble_ledframe(fft_output_buffer[j], 0, 0, global_val);
+                led_buffer[i][j] = hsvtable[fft_output_buffer[i]];
             }
         }
         fft_buffer_ready = 0;
         multispi_start();
+        digitalWrite(SP_MK2_GPIO, LOW);
+    }
+}
+
+void led_writefft_ripple(uint8_t global_val) {
+    if (fft_buffer_ready == 1) {
+        digitalWrite(SP_MK2_GPIO, HIGH);
+        // LED data frames
+        int i,j;
+        for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
+            for (j = 0; j < (NUMSPOKES); j++) {
+                led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
+            }
+        }
+        for (i = 0; i < (NUMSPOKES); i++) {
+            led_buffer[1][i] = hsvtable[fft_output_buffer[i]];
+        }
+        fft_buffer_ready = 0;
+        multispi_start();
+        digitalWrite(SP_MK2_GPIO, LOW);
     }
 }
 
@@ -153,24 +177,24 @@ void _zpu_interrupt() {
     if (adc_buffer_ready == 0) { // Just to make sure we don't overwrite buffer while we copy it.
         FFT_type::fixed fv;
         FFT_type::fixed winv;
-//         fv.v = ((int)(USPIDATA & 0xffff)-2047);
-//         Serial.print("A");
-//         Serial.print((int)(USPIDATA & 0xffff)-2047);
-//         Serial.println();
+        //         fv.v = ((int)(USPIDATA & 0xffff)-2047);
+        //         Serial.print("A");
+        //         Serial.print((int)(USPIDATA & 0xffff)-2047);
+        //         Serial.println();
         // Multiply by window
-//         winv.v = window[adc_buffer_ptr];
-//         adc_buffer[adc_buffer_ptr] = winv.v;
+        //         winv.v = window[adc_buffer_ptr];
+        //         adc_buffer[adc_buffer_ptr] = winv.v;
         // Advance file
         adc_buffer[adc_buffer_ptr] = ((int)(USPIDATA & 0xffff)-2047);
         SPIDATA32 = 0;
         fv *= winv;
-//         USPIDATA16 = 0; // Start reading next sample
+        //         USPIDATA16 = 0; // Start reading next sample
         adc_buffer_ptr++;
         if (adc_buffer_ptr > (fft_subwindowsize)) {
             adc_buffer_ready = 1;
             adc_buffer_ptr = 0;
-//             digitalWrite(SP_MK2_GPIO, HIGH);
-//             digitalWrite(SP_MK2_GPIO, LOW);
+            //             digitalWrite(SP_MK2_GPIO, HIGH);
+            //             digitalWrite(SP_MK2_GPIO, LOW);
         }
     }
     USPIDATA16 = (adc_channel << 11); // Start reading next sample
@@ -187,30 +211,8 @@ void perform_fft() {
             for (i = 0; i < fft_subwindowsize; i++) {
                 fft_input_buffer[i] = adc_buffer[i];
             }
-//     Serial.print(adc_buffer[0]);
-//     Serial.print(";");
-//     Serial.print(adc_buffer[31]);
-//     Serial.print(";");
-//     Serial.print(adc_buffer[63]);
-//     Serial.print(";");
-//     Serial.print(adc_buffer[95]);
-//     Serial.print(";");
-//     Serial.print(adc_buffer[127]);
-//     Serial.print(";;;");
-//     Serial.print(fft_input_buffer[0]);
-//     Serial.print(";");
-//     Serial.print(fft_input_buffer[63]);
-//     Serial.print(";");
-//     Serial.print(fft_input_buffer[127]);
-//     Serial.print(";");
-//     Serial.print(fft_input_buffer[191]);
-//     Serial.print(";");
-//     Serial.print(fft_input_buffer[255]);
-//     Serial.print(";");
-//     Serial.print(millis());
-//     Serial.println();
         }
-        digitalWrite(SP_MK2_GPIO, HIGH);
+        //         digitalWrite(SP_MK2_GPIO, HIGH);
         int i;
         fft_buffer_ready = 0;
         //move the ADC buffer to the FFT real input
@@ -233,13 +235,87 @@ void perform_fft() {
             fft_output_buffer[i] = v.v >> 8;
         }
         fft_buffer_ready = 1;
-        digitalWrite(SP_MK2_GPIO, LOW);
-//         for (i=0; i<(FFT_SIZE); i++) {
-//             Serial.print(fft_input_buffer[i]);
-//             Serial.print(";");
-//         }
+        //         digitalWrite(SP_MK2_GPIO, LOW);
+        //         for (i=0; i<(FFT_SIZE); i++) {
+        //             Serial.print(fft_input_buffer[i]);
+        //             Serial.print(";");
+        //         }
+        //         Serial.println();
+        //     Serial.print(adc_buffer[0]);
+        //     Serial.print(";");
+        //     Serial.print(adc_buffer[31]);
+        //     Serial.print(";");
+        //     Serial.print(adc_buffer[63]);
+        //     Serial.print(";");
+        //     Serial.print(adc_buffer[95]);
+        //     Serial.print(";");
+        //     Serial.print(adc_buffer[127]);
+        //     Serial.print(";;;");
+        //     Serial.print(fft_input_buffer[0]);
+        //     Serial.print(";");
+        //     Serial.print(fft_input_buffer[63]);
+        //     Serial.print(";");
+        //     Serial.print(fft_input_buffer[127]);
+        //     Serial.print(";");
+        //     Serial.print(fft_input_buffer[191]);
+        //     Serial.print(";");
+        //     Serial.print(fft_input_buffer[255]);
+        //     Serial.print(";;;");
+        Serial.print(fft_output_buffer[0]);
+        Serial.print(";");
+        Serial.print(fft_output_buffer[31]);
+        Serial.print(";");
+        Serial.print(fft_output_buffer[63]);
+        Serial.print(";");
+        Serial.print(fft_output_buffer[95]);
+        Serial.print(";");
+        Serial.print(fft_output_buffer[127]);
+        //     Serial.print(";;;");
+        //     Serial.print(millis());
 //         Serial.println();
     }
+}
+
+void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val_max, uint32_t rgb_max) {
+    delay(2000);
+    int i = 0;
+    float hue, val;
+    uint8_t Rvalue, Gvalue, Bvalue;
+    int32_t hue_range = hue_max - hue_min;
+    int32_t val_range = val_max - val_min;
+    float hue_step = (float)hue_range / 255.0;
+    float val_step = (float)val_range / 255.0;
+    Serial.print("hue_range=");
+    Serial.println(hue_range);
+    Serial.print("hue_step=");
+    Serial.println(hue_step);
+    Serial.print("val_range=");
+    Serial.println(val_range);
+    Serial.print("val_step=");
+    Serial.println(val_step);
+    for (i=0; i<256; i++) {
+        hue = (hue_min + (i * hue_step))/255;
+        val = (val_min + (i * val_step))/255;
+        hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
+        hsvtable[i] = assemble_ledframe(Rvalue, Gvalue, Bvalue, 255);
+        Serial.print("R=");
+        Serial.print(Rvalue);
+        Serial.print(";");
+        Serial.print("G=");
+        Serial.print(Gvalue);
+        Serial.print(";");
+        Serial.print("B=");
+        Serial.print(Bvalue);
+        Serial.print(";");
+        Serial.print(hsvtable[i]);
+        Serial.print(";");
+//         Serial.print(ug);
+//         Serial.print(";");
+//         Serial.print(ub);
+//         Serial.print(";");
+        Serial.println();
+    }
+    Serial.println();
 }
 
 void init_usbserial() {
@@ -264,7 +340,7 @@ int read3charmakeint() {
 }
 
 int checkuartstop() {
-//     delayMicroseconds(500);
+    //     delayMicroseconds(500);
     if (uart2.read() == '#') {
         return 1;
     }
@@ -286,6 +362,14 @@ int read_uart_command() {
                 switch (uart2.read()) { // this switch case parses options for the application "mode"
                     case 'R': // ripple mode
                         uart2.print("R");
+                        switch (uart2.read()) { // this switch case for solid-color mode options
+                            case 'E': // mode
+                                uart2.print("E");
+                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                vis_mode = 'R'; // set the mode to "solid color"
+                                break;
+                        }
                         break;
                     case 'S': // spiral mode
                         uart2.print("S");
@@ -304,43 +388,53 @@ int read_uart_command() {
                                 break;
                         }
                         break;
-                    case 'C': // solid color mode
-                        uart2.print("C");
-                        switch (uart2.read()) { // this switch case for solid-color mode options
-                            case 'E': // mode
-                                uart2.print("E");
-                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
-                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
-                                vis_mode = 'C'; // set the mode to "solid color"
+                            case 'C': // solid color mode
+                                uart2.print("C");
+                                switch (uart2.read()) { // this switch case for solid-color mode options
+                                    case 'E': // mode
+                                        uart2.print("E");
+                                        // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                        if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                        vis_mode = 'C'; // set the mode to "solid color"
+                                        break;
+                                    case 'R': // RGB
+                                        uart2.print("R");
+                                        r_command = read3charmakeint();
+                                        g_command = read3charmakeint();
+                                        b_command = read3charmakeint();
+                                        if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                        uart2.print("#");
+                                        r = r_command;
+                                        g = g_command;
+                                        b = b_command;
+                                        break;
+                                    case 'H': // HSV
+                                        uart2.print("H");
+                                        // TODO add HSV control option
+                                        break;
+                                }
                                 break;
-                            case 'R': // RGB
-                                uart2.print("R");
-                                r_command = read3charmakeint();
-                                g_command = read3charmakeint();
-                                b_command = read3charmakeint();
-                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
-                                uart2.print("#");
-                                r = r_command;
-                                g = g_command;
-                                b = b_command;
-                                break;
-                            case 'H': // HSV
-                                uart2.print("H");
-                                // TODO add HSV control option
-                                break;
-                        }
-                        break;
+                            case 'P': // VU mode
+                                uart2.print("P");
+                                switch (uart2.read()) { // this switch case for solid-color mode options
+                                    case 'E': // mode
+                                        uart2.print("E");
+                                        // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                        if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                        vis_mode = 'P'; // set the mode to "pause"
+                                        break;
+                                }
                 }
                 break;
-            case 'H': // HSV
-                uart2.print("H");
-                break;
-            case 'F': // FFT
-                uart2.print("F");
-                break;
-            case 'A': // ADC
-                uart2.print("A");
-                break;
+                                    case 'H': // HSV
+                                        uart2.print("H");
+                                        break;
+                                    case 'F': // FFT
+                                        uart2.print("F");
+                                        break;
+                                    case 'A': // ADC
+                                        uart2.print("A");
+                                        break;
         }
     }
 }
@@ -352,6 +446,8 @@ void setup() {
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
     pinMode(SP_MK2_GPIO, OUTPUT);
+    digitalWrite(SP_MK2_GPIO, HIGH);
+    make_rgb_lut(0, 255, 0, 255, 32);
 }
 
 void loop() {
@@ -360,6 +456,8 @@ void loop() {
     switch (vis_mode) {
         // debug case, bring solid color
         case 'R': // ripple mode case "soundpuddle classic" TODO finish this
+            perform_fft();
+            led_writefft_ripple(global);
             break;
         case 'S': // spiral mode
             break;
@@ -367,21 +465,24 @@ void loop() {
             break;
         case 'V': // VU meter mode
             perform_fft();
-            led_writefft(global);
+            led_writefft_vu(global);
             break;
         case 'C': // solid-color mode
             led_writeall(r,g,b,global);
+            break;
+        case 'P': // pause mode
+            // pause (do nothing)
             break;
         default:
             uart2.print("DEFAULT CASE");
             break;
     }
     delayMicroseconds(sysdelay);
-//     digitalWrite(SP_MK2_GPIO, HIGH);
-//     int qq;
-//     for (qq=0; qq < FFT_SIZE/8; qq++) {
-//         Serial.print(adc_buffer[0]);
-//         Serial.println();
-//     }
-//     digitalWrite(SP_MK2_GPIO, LOW);
+    //     digitalWrite(SP_MK2_GPIO, HIGH);
+    //     int qq;
+    //     for (qq=0; qq < FFT_SIZE/8; qq++) {
+    //         Serial.print(adc_buffer[0]);
+    //         Serial.println();
+    //     }
+    //     digitalWrite(SP_MK2_GPIO, LOW);
 }

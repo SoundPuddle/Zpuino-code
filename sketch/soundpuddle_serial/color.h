@@ -2,6 +2,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#define hsv_depth 256
+
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 /**
@@ -26,9 +28,8 @@ typedef enum {
     COLOR_ERR_INVALID               /**< Invalid color error */
 } color_err_t;
 
-
 float Hue_2_RGB( float v1, float v2, float vH );
 void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval);
 void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue);
-void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
+// void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
 unsigned long assemble_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global);

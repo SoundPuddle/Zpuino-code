@@ -80,50 +80,17 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
         break;
     }
   }
-//   // The LPD8806 only has 7-bit PWM, so the R,G,B channel maximums are 127
-//   Rvalue = (uint8_t)(red*127.0);
-//   Gvalue = (uint8_t)(green*127.0);
-//   Bvalue = (uint8_t)(blue*127.0);
+  // The LPD8806 only has 7-bit PWM, so the R,G,B channel maximums are 127
+  Rvalue = (uint8_t)(red*255.0);
+  Gvalue = (uint8_t)(green*255.0);
+  Bvalue = (uint8_t)(blue*255.0);
 }
 
-void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max) {
-  int i = 0;
-  float Rval, Gval, Bval, hue, hue_divisor, hsvalue;
-  uint8_t Rvalue, Gvalue, Bvalue;
-  delay(2000);
-  for (i=0;i<256;i++) {
-    //hue = sin(((float)i/128)) + hue_offset;
-    hue = (((float)i)/hue_divisor)+hue_offset;
-    if (hue < 0) {hue = 0;}
-    //if (hue > (1+hue_offset-hue_limiter)) {hue = 1+hue_offset-hue_limiter;}
-    hsvalue = (((float)i)-(float)hsvalue_floor)/256;
-    if (hsvalue < 0) {hsvalue = 0;}
-    //if (hsvalue > hsvalue_max) {hsvalue = hsvalue_max;}
-    if (hsvalue > 255) {hsvalue = 255;}
-    //hsl2rgb( (hue), 0.99, hsvalue,Rval,Gval,Bval); //"blue / aqua" color mapping for Mark's
-    hsv2rgb((hue), 0.99, hsvalue,Rvalue,Gvalue,Bvalue);
-    Rvalue = Rvalue * rgain;
-    Gvalue = Gvalue * ggain;
-    Bvalue = Bvalue * bgain;
-    unsigned ur = (unsigned int)Rvalue;
-    unsigned ug = (unsigned int)Gvalue;
-    unsigned ub = (unsigned int)Bvalue;
-    unsigned total_rgb = ur + ug + ub;
-    // Check to see if the total_rgb RGB brightness is going to exceed the "clamp" threshold. If so, normalize each channel lowe
-    if (total_rgb > rgb_max) {
-      float rgb_max_ratio = ((float)rgb_max)/((float)total_rgb);
-      ur = ((float)ur) * rgb_max_ratio;
-      ug = ((float)ug) * rgb_max_ratio;
-      ub = ((float)ub) * rgb_max_ratio;
-    }
-//     // The RGB channels are in the order GRB on the soundpuddle LPD8806 strips
-//     unsigned pixel = ( ((ur|0x80) << 16) | ((ug|0x80) << 8) | (ub|0x80) ) << 8;
-//     hsvtable[i] = pixel;
-  }
-}
+
 
 // This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
 unsigned long assemble_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global) {
-    unsigned long result = ( ((0xE0 | global) << 24) | (b_val << 16) | (g_val << 8) | r_val );
-    return result;
+//     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
+    return (0xff000000) | (b_val << 16) | (g_val << 8) | r_val ; // this line forces global == 0xFF, which shaves ~1mS off the loop time for the full-size soundpuddle
+    // TODO: make this an ifdef, or otherwise improve this implementation
 }
