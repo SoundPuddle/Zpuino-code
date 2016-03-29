@@ -5,9 +5,10 @@
 #include "mapping.h"
 // #include "serial.h"
 #include "color.h"
+// #include "ring_buffer.h"
 
 // ADC control parameters
-#define DEFAULT_SAMPLING_FREQ 4000 // unit (hz)
+#define DEFAULT_SAMPLING_FREQ 8207 // unit (hz)
 #define DEFAULT_ADC_CHANNEL 0x02 // channel 0x02 == on-board electret mic
 
 // LED array dimensions

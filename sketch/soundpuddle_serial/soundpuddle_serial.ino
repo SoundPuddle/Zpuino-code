@@ -1,4 +1,7 @@
 #include "soundpuddle.h"
+
+extern unsigned int window[];
+
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
 
 // System control
@@ -8,7 +11,7 @@ volatile int uartcommand = 1; // this variable holds the serial command from the
 
 // ADC and FFT configuration
 float adc_gain = 1;
-int fft_div = 4; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
+int fft_div = 8; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
 int fft_subwindowsize = FFT_SIZE/fft_div;
 volatile int fft_buffer_ready = 0;
 volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
@@ -17,16 +20,16 @@ volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC samplin
 volatile int adc_buffer_quarter = 0; // flag to indicate what quarter the adc buffer is in (first, second, third, first)
 static int adc_buffer[FFT_SIZE]; // this array contains the input from the ADC, it is what the interrupt function writes into
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-// volatile unsigned fft_buffer_map[NUMSPOKES]={23,24,26,27,29,31,33,35,37,39,41,44}; // this array defines which bin of the FFT will be selected for visualization
+static int ftt_bin_map[] = {16, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 138, 146, 155, 164, 174, 184, 195, 207, 219, 232, 246};
+unsigned fft_mapped_buffer[sizeof(ftt_bin_map)];
 unsigned fft_output_buffer[FFT_SIZE/2]; // this array contains the full output of the FFT
 int fft_input_buffer[FFT_SIZE]; // this array contains the ADC input values for the FFT
-typedef FFT_256 FFT_type;
+typedef FFT_512 FFT_type;
 static FFT_type myfft;
-extern unsigned int window[];
+extern unsigned int hsv_table[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
 // hsv control
-unsigned int hsvtable[256];
 
 volatile uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
@@ -69,7 +72,6 @@ while(n--) {SPI3DATA=0};
 void init_multispi() {
     REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
     REGISTER(HWMULTISPIBASE,2)= (unsigned long)&led_buffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
-    // Writing direct mapping at 5076  - we use this /3 minus one
     REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
     REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 }
@@ -145,21 +147,21 @@ void led_output_prep() {
 // This function uses the FFT bin defined by fft_output_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
 void led_writefft_vu(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
-        digitalWrite(SP_MK2_GPIO, HIGH);
+//         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
         int i,j;
         for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[i][j] = hsvtable[fft_output_buffer[i]];
+                led_buffer[i][j] = hsv_table[fft_output_buffer[i]];
             }
         }
         fft_buffer_ready = 0;
         multispi_start();
-        digitalWrite(SP_MK2_GPIO, LOW);
+//         digitalWrite(SP_MK2_GPIO, LOW);
     }
 }
 
-void led_writefft_ripple(uint8_t global_val) {
+void led_write_fftmap_ripple(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
@@ -170,11 +172,32 @@ void led_writefft_ripple(uint8_t global_val) {
             }
         }
         for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsvtable[fft_output_buffer[i]];
+            led_buffer[1][i] = hsv_table[fft_mapped_buffer[i]];
         }
+        digitalWrite(SP_MK2_GPIO, LOW);
         fft_buffer_ready = 0;
         multispi_start();
-        digitalWrite(SP_MK2_GPIO, LOW);
+    }
+}
+
+void led_writefft_ripple(uint8_t global_val) {
+    if (fft_buffer_ready == 1) {
+//         digitalWrite(SP_MK2_GPIO, HIGH);
+        // LED data frames
+        int i,j;
+        digitalWrite(SP_MK2_GPIO, HIGH);
+        for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
+            for (j = 0; j < (NUMSPOKES); j++) {
+                led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
+            }
+        }
+        for (i = 0; i < (NUMSPOKES); i++) {
+            led_buffer[1][i] = hsv_table[fft_output_buffer[i]];
+        }
+        digitalWrite(SP_MK2_GPIO, HIGH);
+        fft_buffer_ready = 0;
+        multispi_start();
+//         digitalWrite(SP_MK2_GPIO, LOW);
     }
 }
 
@@ -188,8 +211,8 @@ void _zpu_interrupt() {
         //         Serial.print((int)(USPIDATA & 0xffff)-2047);
         //         Serial.println();
         // Multiply by window
-        //         winv.v = window[adc_buffer_ptr];
-        //         adc_buffer[adc_buffer_ptr] = winv.v;
+        winv.v = window[adc_buffer_ptr];
+//         adc_buffer[adc_buffer_ptr] = winv.v;
         // Advance file
         adc_buffer[adc_buffer_ptr] = adc_gain * ((int)(USPIDATA & 0xffff)-2047); // apply the floating-point gain and store the value TODO: Make this an integer operation to improve speed
         SPIDATA32 = 0;
@@ -207,6 +230,44 @@ void _zpu_interrupt() {
     TMR0CTL &= ~(BIT(TCTLIF));
 }
 
+void perform_fft_mapped() {
+    int i = 0;
+    if (adc_buffer_ready == 1) {
+        if (fft_div > 1) { // shift the input array if we are doing sub-window FFTs
+            for (i = 0; i < (FFT_SIZE - fft_subwindowsize); i++) {
+                fft_input_buffer[FFT_SIZE - 1 - i] = fft_input_buffer[FFT_SIZE - fft_subwindowsize - 1 - i];
+            }
+            for (i = 0; i < fft_subwindowsize; i++) {
+                fft_input_buffer[i] = (adc_buffer[i]); // apply the user-controllable input gain here
+            }
+        }
+//         digitalWrite(SP_MK2_GPIO, HIGH);
+        int i;
+        fft_buffer_ready = 0;
+        //move the ADC buffer to the FFT real input
+        for (i=0; i<FFT_SIZE; i++) {
+            myfft.in_real[i].v= fft_input_buffer[i];
+            myfft.in_im[i].v=0;
+        }
+        adc_buffer_ready = 0; // we're done with this ADC buffer window, enable sampling for the next window
+        myfft.doFFT();
+        // this for loop can run the entire length of FFT_SIZE/2, or an abbreviated length of only the BIN we're interested in for the visualization application
+        for (i=0; i<(sizeof(ftt_bin_map)-1); i++) {
+            FFT_type::fixed v = myfft.in_real[ftt_bin_map[i]]; // take only the bin we're interested in
+            v.v>>=2;
+            v *= v;
+            FFT_type::fixed u = myfft.in_im[ftt_bin_map[i]];
+            u.v>>=2;
+            u *= u;
+            v += u;
+            v.v = fsqrt16(v.asNative());
+            fft_mapped_buffer[i] = v.v >> 8;
+        }
+        fft_buffer_ready = 1;
+//         digitalWrite(SP_MK2_GPIO, LOW);
+    }
+}
+
 void perform_fft() {
     int i = 0;
     if (adc_buffer_ready == 1) {
@@ -218,7 +279,7 @@ void perform_fft() {
                 fft_input_buffer[i] = (adc_buffer[i]); // apply the user-controllable input gain here
             }
         }
-        //         digitalWrite(SP_MK2_GPIO, HIGH);
+//         digitalWrite(SP_MK2_GPIO, HIGH);
         int i;
         fft_buffer_ready = 0;
         //move the ADC buffer to the FFT real input
@@ -241,7 +302,7 @@ void perform_fft() {
             fft_output_buffer[i] = v.v >> 8;
         }
         fft_buffer_ready = 1;
-        //         digitalWrite(SP_MK2_GPIO, LOW);
+//         digitalWrite(SP_MK2_GPIO, LOW);
         //         for (i=0; i<(FFT_SIZE); i++) {
         //             Serial.print(fft_input_buffer[i]);
         //             Serial.print(";");
@@ -267,15 +328,15 @@ void perform_fft() {
         //     Serial.print(";");
         //     Serial.print(fft_input_buffer[255]);
         //     Serial.print(";;;");
-        Serial.print(fft_output_buffer[0]);
-        Serial.print(";");
-        Serial.print(fft_output_buffer[31]);
-        Serial.print(";");
-        Serial.print(fft_output_buffer[63]);
-        Serial.print(";");
-        Serial.print(fft_output_buffer[95]);
-        Serial.print(";");
-        Serial.print(fft_output_buffer[127]);
+//         Serial.print(fft_output_buffer[0]);
+//         Serial.print(";");
+//         Serial.print(fft_output_buffer[31]);
+//         Serial.print(";");
+//         Serial.print(fft_output_buffer[63]);
+//         Serial.print(";");
+//         Serial.print(fft_output_buffer[95]);
+//         Serial.print(";");
+//         Serial.print(fft_output_buffer[127]);
         //     Serial.print(";;;");
         //     Serial.print(millis());
 //         Serial.println();
@@ -283,7 +344,7 @@ void perform_fft() {
 }
 
 void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val_max, uint32_t rgb_max) {
-    delay(2000);
+//     delay(2000);
     int i = 0;
     float hue, val;
     uint8_t Rvalue, Gvalue, Bvalue;
@@ -303,7 +364,7 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
         hue = (hue_min + (i * hue_step))/255;
         val = (val_min + (i * val_step))/255;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
-        hsvtable[i] = assemble_ledframe(Rvalue, Gvalue, Bvalue, 255);
+        hsv_table[i] = assemble_ledframe(Rvalue, Gvalue, Bvalue, 255);
         Serial.print("R=");
         Serial.print(Rvalue);
         Serial.print(";");
@@ -313,7 +374,7 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
         Serial.print("B=");
         Serial.print(Bvalue);
         Serial.print(";");
-        Serial.print(hsvtable[i]);
+        Serial.print(hsv_table[i]);
         Serial.print(";");
 //         Serial.print(ug);
 //         Serial.print(";");
@@ -326,7 +387,7 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
 
 void init_usbserial() {
     Serial.begin(115200);
-    Serial.println("Init");
+//     Serial.println("Init");
 }
 
 void init_leds() {
@@ -474,8 +535,8 @@ void setup() {
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
     //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
     pinMode(SP_MK2_GPIO, OUTPUT);
-    digitalWrite(SP_MK2_GPIO, HIGH);
-    make_rgb_lut(0, 255, 0, 255, 32);
+//     digitalWrite(SP_MK2_GPIO, HIGH);
+//     make_rgb_lut(0, 255, 0, 255, 32);
 }
 
 void loop() {
@@ -484,8 +545,10 @@ void loop() {
     switch (vis_mode) {
         // debug case, bring solid color
         case 'R': // ripple mode case "soundpuddle classic" TODO finish this
-            perform_fft();
-            led_writefft_ripple(global);
+//             perform_fft();
+            perform_fft_mapped();
+//             led_writefft_ripple(global);
+            led_write_fftmap_ripple(global);
             break;
         case 'S': // spiral mode
             break;

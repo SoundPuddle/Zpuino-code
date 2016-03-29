@@ -2,8 +2,6 @@
 #include <math.h>
 #include <stdio.h>
 
-#define hsv_depth 256
-
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 /**
