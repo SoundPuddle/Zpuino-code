@@ -32,7 +32,7 @@ extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 // hsv control
 
 volatile uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+volatile uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
 volatile uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
@@ -127,7 +127,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
         // increment through each spoke
         for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_ledframe(r_val, g_val, b_val, global_val);
+            led_buffer[i][j] = assemble_lpd8806_ledframe(r_val, g_val, b_val);
         }
     }
     multispi_start();
@@ -139,7 +139,15 @@ void led_output_prep() {
     // put start and stop frames into LED memory space
     for (i = 0; i < (NUMSPOKES); i++) {
         // the first frame for each spoke
-        led_buffer[0][i] = ledstart;
+//         led_buffer[0][i] = lpd8806_zero;
+//         led_buffer[1][i] = lpd8806_zero;
+//         led_buffer[2][i] = lpd8806_zero;
+//         led_buffer[3][i] = lpd8806_zero;
+        led_buffer[SPOKEBUFFERSIZE-1][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-2][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-3][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-4][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-5][i] = 0x00000000;
         //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
     }
 }
@@ -364,18 +372,18 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
         hue = (hue_min + (i * hue_step))/255;
         val = (val_min + (i * val_step))/255;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
-        hsv_table[i] = assemble_ledframe(Rvalue, Gvalue, Bvalue, 255);
-        Serial.print("R=");
-        Serial.print(Rvalue);
-        Serial.print(";");
-        Serial.print("G=");
-        Serial.print(Gvalue);
-        Serial.print(";");
-        Serial.print("B=");
-        Serial.print(Bvalue);
-        Serial.print(";");
-        Serial.print(hsv_table[i]);
-        Serial.print(";");
+        hsv_table[i] = assemble_lpd8806_ledframe(Rvalue, Gvalue, Bvalue);
+//         Serial.print("R=");
+//         Serial.print(Rvalue);
+//         Serial.print(";");
+//         Serial.print("G=");
+//         Serial.print(Gvalue);
+//         Serial.print(";");
+//         Serial.print("B=");
+//         Serial.print(Bvalue);
+//         Serial.print(";");
+//         Serial.print(hsv_table[i]);
+//         Serial.print(";");
 //         Serial.print(ug);
 //         Serial.print(";");
 //         Serial.print(ub);
@@ -533,7 +541,7 @@ void setup() {
     init_leds(); // setup the LED and color arrays
     init_usbserial(); // turn on the ZPUino serial port connected to FTDI>USB
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
-    //make_rgb_lut(hue_offset, hsvalue_floor, rgain, ggain, bgain, rgb_max);
+    make_rgb_lut(0, 230, 0, 127, 32);
     pinMode(SP_MK2_GPIO, OUTPUT);
 //     digitalWrite(SP_MK2_GPIO, HIGH);
 //     make_rgb_lut(0, 255, 0, 255, 32);
