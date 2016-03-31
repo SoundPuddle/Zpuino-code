@@ -89,10 +89,15 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
 
 
 // This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
-unsigned long assemble_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global) {
+unsigned long assemble_apa102_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global) {
 //     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
     return (0xff000000) | (b_val << 16) | (g_val << 8) | r_val ; // this line forces global == 0xFF, which shaves ~1mS off the loop time for the full-size soundpuddle
     // TODO: make this an ifdef, or otherwise improve this implementation
+}
+
+// This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
+unsigned long assemble_lpd8806_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val) {
+    return (0x808080 | (b_val << 16) | (r_val << 8) | g_val) << 8 ;
 }
 
 unsigned long hsv_table[255] = {

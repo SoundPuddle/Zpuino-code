@@ -30,4 +30,5 @@ float Hue_2_RGB( float v1, float v2, float vH );
 void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval);
 void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue);
 // void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
-unsigned long assemble_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global);
+unsigned long assemble_apa102_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global);
+unsigned long assemble_lpd8806_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val);

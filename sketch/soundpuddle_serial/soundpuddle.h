@@ -16,10 +16,12 @@
 #define SPOKEBUFFERSIZE 512 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
 
 // LED packets (vary by LED type)
-#define ledstart 0x00000000
+#define ledstart 0x00000000 // APA102
+#define lpd8806_zero 0x808080 // LPD8806
 #define ledstop 0xFFFFFFFF
 #define ledoff 0xFF000000
 #define ledtest 0xFFF0F0F0
+
 
 // SoundPuddle MK2 megawing pin assignment definitions
 // #define SP_MK2_FLASHCS_PIN WING_B_5
