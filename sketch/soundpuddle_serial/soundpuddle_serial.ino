@@ -11,7 +11,7 @@ volatile int uartcommand = 1; // this variable holds the serial command from the
 
 // ADC and FFT configuration
 float adc_gain = 1;
-int fft_div = 8; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
+int fft_div = 5; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
 int fft_subwindowsize = FFT_SIZE/fft_div;
 volatile int fft_buffer_ready = 0;
 volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
@@ -20,11 +20,11 @@ volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC samplin
 volatile int adc_buffer_quarter = 0; // flag to indicate what quarter the adc buffer is in (first, second, third, first)
 static int adc_buffer[FFT_SIZE]; // this array contains the input from the ADC, it is what the interrupt function writes into
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-static int ftt_bin_map[] = {16, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 138, 146, 155, 164, 174, 184, 195, 207, 219, 232, 246};
+static int ftt_bin_map[] = {16, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
 unsigned fft_mapped_buffer[sizeof(ftt_bin_map)];
 unsigned fft_output_buffer[FFT_SIZE/2]; // this array contains the full output of the FFT
 int fft_input_buffer[FFT_SIZE]; // this array contains the ADC input values for the FFT
-typedef FFT_512 FFT_type;
+typedef FFT_256 FFT_type;
 static FFT_type myfft;
 extern unsigned int hsv_table[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
@@ -127,7 +127,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
         // increment through each spoke
         for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_lpd8806_ledframe(r_val, g_val, b_val);
+            led_buffer[i][j] = assemble_apa102_ledframe(r_val, g_val, b_val, global);
         }
     }
     multispi_start();
@@ -372,7 +372,7 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
         hue = (hue_min + (i * hue_step))/255;
         val = (val_min + (i * val_step))/255;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
-        hsv_table[i] = assemble_lpd8806_ledframe(Rvalue, Gvalue, Bvalue);
+        hsv_table[i] = assemble_apa102_ledframe(Rvalue, Gvalue, Bvalue, global);
 //         Serial.print("R=");
 //         Serial.print(Rvalue);
 //         Serial.print(";");

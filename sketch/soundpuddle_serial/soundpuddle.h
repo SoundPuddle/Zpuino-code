@@ -8,12 +8,12 @@
 // #include "ring_buffer.h"
 
 // ADC control parameters
-#define DEFAULT_SAMPLING_FREQ 8207 // unit (hz)
+#define DEFAULT_SAMPLING_FREQ 16000 // unit (hz)
 #define DEFAULT_ADC_CHANNEL 0x02 // channel 0x02 == on-board electret mic
 
 // LED array dimensions
-#define NUMSPOKES 12 // number of strips (index at 1, i.e. 12 strips = 12)
-#define SPOKEBUFFERSIZE 512 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
+#define NUMSPOKES 24 // number of strips (index at 1, i.e. 12 strips = 12)
+#define SPOKEBUFFERSIZE 52 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
 
 // LED packets (vary by LED type)
 #define ledstart 0x00000000 // APA102
