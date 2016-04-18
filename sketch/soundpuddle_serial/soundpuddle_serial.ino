@@ -11,7 +11,7 @@ volatile int uartcommand = 1; // this variable holds the serial command from the
 
 // ADC and FFT configuration
 float adc_gain = 1;
-int fft_div = 5; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
+int fft_div = 12; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
 int fft_subwindowsize = FFT_SIZE/fft_div;
 volatile int fft_buffer_ready = 0;
 volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
@@ -20,8 +20,9 @@ volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC samplin
 volatile int adc_buffer_quarter = 0; // flag to indicate what quarter the adc buffer is in (first, second, third, first)
 static int adc_buffer[FFT_SIZE]; // this array contains the input from the ADC, it is what the interrupt function writes into
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-static int ftt_bin_map[] = {16, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
-unsigned fft_mapped_buffer[sizeof(ftt_bin_map)];
+// static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
+static int fft_bin_map[] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 54, 57}; // sample rate 10426, 509hz - 2341
+unsigned fft_mapped_buffer[sizeof(fft_bin_map)];
 unsigned fft_output_buffer[FFT_SIZE/2]; // this array contains the full output of the FFT
 int fft_input_buffer[FFT_SIZE]; // this array contains the ADC input values for the FFT
 typedef FFT_256 FFT_type;
@@ -139,15 +140,7 @@ void led_output_prep() {
     // put start and stop frames into LED memory space
     for (i = 0; i < (NUMSPOKES); i++) {
         // the first frame for each spoke
-//         led_buffer[0][i] = lpd8806_zero;
-//         led_buffer[1][i] = lpd8806_zero;
-//         led_buffer[2][i] = lpd8806_zero;
-//         led_buffer[3][i] = lpd8806_zero;
-        led_buffer[SPOKEBUFFERSIZE-1][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-2][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-3][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-4][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-5][i] = 0x00000000;
+        led_buffer[0][i] = ledstart; //used for the APA102
         //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
     }
 }
@@ -260,11 +253,11 @@ void perform_fft_mapped() {
         adc_buffer_ready = 0; // we're done with this ADC buffer window, enable sampling for the next window
         myfft.doFFT();
         // this for loop can run the entire length of FFT_SIZE/2, or an abbreviated length of only the BIN we're interested in for the visualization application
-        for (i=0; i<(sizeof(ftt_bin_map)-1); i++) {
-            FFT_type::fixed v = myfft.in_real[ftt_bin_map[i]]; // take only the bin we're interested in
+        for (i=0; i<(sizeof(fft_bin_map)-1); i++) {
+            FFT_type::fixed v = myfft.in_real[fft_bin_map[i]]; // take only the bin we're interested in
             v.v>>=2;
             v *= v;
-            FFT_type::fixed u = myfft.in_im[ftt_bin_map[i]];
+            FFT_type::fixed u = myfft.in_im[fft_bin_map[i]];
             u.v>>=2;
             u *= u;
             v += u;
@@ -573,7 +566,7 @@ void loop() {
             // pause (do nothing)
             break;
         default:
-            uart2.print("DEFAULT CASE");
+//             uart2.print("DEFAULT CASE");
             break;
     }
     delayMicroseconds(sysdelay);

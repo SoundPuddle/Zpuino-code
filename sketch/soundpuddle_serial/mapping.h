@@ -3,6 +3,6 @@
 extern unsigned int ledmapping[]; 
 #define FLUSH_OFFSET 0 /* In words */
 #define FLUSH_SIZE 0 /* In words */
-#define DIRECTMAP_OFFSET 623 /* In words */ 
-#define NUMLEDS 624 
+#define DIRECTMAP_OFFSET 659 /* In words */ 
+#define NUMLEDS 660 
 #endif
