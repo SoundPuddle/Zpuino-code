@@ -1,7 +1,7 @@
 #include "fixedpoint.h"
 
 // FFT size definition
-#define FFT_SIZE 512
+#define FFT_SIZE 256
 #define print_fft_vals 0
 
 #undef IMAGINARY_IN
