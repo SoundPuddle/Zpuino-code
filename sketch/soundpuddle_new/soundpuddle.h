@@ -11,7 +11,7 @@
 #define DEFAULT_ADC_CHANNEL 0x02 // channel 0x02 == on-board electret mic
 
 // LED array dimensions
-#define NUMSPOKES 12 // number of strips (index at 1, i.e. 12 strips = 12)
+#define NUMSPOKES 24 // number of strips (index at 1, i.e. 12 strips = 12)
 #define SPOKEBUFFERSIZE 16 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
 
 // LED packets (vary by LED type)
