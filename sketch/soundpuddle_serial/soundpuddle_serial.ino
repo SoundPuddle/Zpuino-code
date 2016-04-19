@@ -1,6 +1,6 @@
 #include "soundpuddle.h"
 
-extern unsigned int window[];
+extern unsigned int window_blackman256[];
 
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
 
@@ -212,7 +212,7 @@ void _zpu_interrupt() {
         //         Serial.print((int)(USPIDATA & 0xffff)-2047);
         //         Serial.println();
         // Multiply by window
-        winv.v = window[adc_buffer_ptr];
+        winv.v = window_blackman256[adc_buffer_ptr];
 //         adc_buffer[adc_buffer_ptr] = winv.v;
         // Advance file
         adc_buffer[adc_buffer_ptr] = adc_gain * ((int)(USPIDATA & 0xffff)-2047); // apply the floating-point gain and store the value TODO: Make this an integer operation to improve speed
