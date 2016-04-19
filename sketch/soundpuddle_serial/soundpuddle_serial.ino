@@ -1,6 +1,7 @@
 #include "soundpuddle.h"
 
 extern unsigned int window_blackman256[];
+extern unsigned int simple_gamma[];
 
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
 
@@ -365,6 +366,9 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
         hue = (hue_min + (i * hue_step))/255;
         val = (val_min + (i * val_step))/255;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
+        Rvalue = simple_gamma[Rvalue];
+        Gvalue = simple_gamma[Gvalue];
+        Bvalue = simple_gamma[Bvalue];
         hsv_table[i] = assemble_apa102_ledframe(Rvalue, Gvalue, Bvalue, global);
 //         Serial.print("R=");
 //         Serial.print(Rvalue);
