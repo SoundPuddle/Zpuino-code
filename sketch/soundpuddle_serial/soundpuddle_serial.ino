@@ -33,12 +33,15 @@ extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
 // hsv control
 
-volatile uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-volatile uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
-volatile uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
-volatile uint16_t b_command = 0x0; // temporary variable to hold an incoming "b" command recieved from the serial interface
+uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t r_temp;
+uint8_t g_temp;
+uint8_t b_temp;
+uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
+uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
+uint16_t b_command = 0x0; // temporary variable to hold an incoming "b" command recieved from the serial interface
 volatile uint16_t uartcommands[3]; // temporary variable array, used in converting three ascii bytes to a three digit number
 volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
 volatile uint16_t  hue_min_command;
@@ -366,9 +369,9 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
         hue = (hue_min + (i * hue_step))/255;
         val = (val_min + (i * val_step))/255;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
-        Rvalue = simple_gamma[Rvalue];
-        Gvalue = simple_gamma[Gvalue];
-        Bvalue = simple_gamma[Bvalue];
+//         Rvalue = simple_gamma[Rvalue];
+//         Gvalue = simple_gamma[Gvalue];
+//         Bvalue = simple_gamma[Bvalue];
         hsv_table[i] = assemble_apa102_ledframe(Rvalue, Gvalue, Bvalue, global);
 //         Serial.print("R=");
 //         Serial.print(Rvalue);
@@ -379,8 +382,8 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
 //         Serial.print("B=");
 //         Serial.print(Bvalue);
 //         Serial.print(";");
-//         Serial.print(hsv_table[i]);
-//         Serial.print(";");
+        Serial.print(hsv_table[i]);
+        Serial.print(";");
 //         Serial.print(ug);
 //         Serial.print(";");
 //         Serial.print(ub);
@@ -460,30 +463,42 @@ int read_uart_command() {
                                 break;
                         }
                         break;
-                            case 'C': // solid color mode
-                                uart2.print("C");
-                                switch (uart2.read()) { // this switch case for solid-color mode options
-                                    case 'E': // mode
-                                        uart2.print("E");
-                                        // verify that we read the stop byte, and this was a valid packet. If so act on the command
-                                        if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
-                                        vis_mode = 'C'; // set the mode to "solid color"
-                                        break;
-                                    case 'R': // RGB
-                                        uart2.print("R");
-                                        r_command = read3charmakeint();
-                                        g_command = read3charmakeint();
-                                        b_command = read3charmakeint();
-                                        if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
-                                        uart2.print("#");
-                                        r = r_command;
-                                        g = g_command;
-                                        b = b_command;
-                                        break;
-                                    case 'H': // HSV
-                                        uart2.print("H");
-                                        // TODO add HSV control option
-                                        break;
+                    case 'C': // solid color mode
+                        uart2.print("C");
+                        switch (uart2.read()) { // this switch case for solid-color mode options
+                            case 'E': // mode
+                                uart2.print("E");
+                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                vis_mode = 'C'; // set the mode to "solid color"
+                                break;
+                            case 'R': // RGB
+                                uart2.print("R");
+                                r_command = read3charmakeint();
+                                g_command = read3charmakeint();
+                                b_command = read3charmakeint();
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                uart2.print("#");
+                                r = r_command;
+                                g = g_command;
+                                b = b_command;
+                                break;
+                            case 'H': // use the HSV min/max comm format to set a specific color (uses the max values, ignores the min values)
+                                uart2.print("H");
+                                hue_min_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                                hue_max_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                                val_min_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                                val_max_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                                if (checkuartstop() == 0) {return 0;}
+                                uart2.print("#");
+                                float hue_command = (float)hue_max_command/255.0;
+                                float val_command = (float)val_max_command/255.0;
+                                hsv2rgb(hue_command,1,val_command,r_temp,g_temp,b_temp);
+                                r = r_temp;
+                                g = g_temp;
+                                b = b_temp;
+//                                 vis_mode = 'C'; // set the mode to "solid color"
+                                break;
                                 }
                                 break;
                             case 'P': // VU mode
@@ -501,7 +516,7 @@ int read_uart_command() {
             case 'H': // HSV
                 uart2.print("H");
                 switch (uart2.read()) { // this switch case for solid-color mode options
-                case 'M': // RGB
+                case 'M': // "mapping" control, recalc the HSV lookup table based on min/max inputs
                     uart2.print("M");
                     hue_min_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
                     hue_max_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
@@ -518,7 +533,7 @@ int read_uart_command() {
                 break;
             case 'A': // ADC
                 uart2.print("A");
-                switch (uart2.read()) { // this switch case for solid-color mode options
+                switch (uart2.read()) {
                 case 'G': // RGB
                     uart2.print("G");
                     adc_gain_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
