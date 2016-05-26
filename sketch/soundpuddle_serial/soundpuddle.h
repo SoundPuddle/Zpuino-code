@@ -1,9 +1,12 @@
+#ifndef ___soundpuddle_h___
+#define ___soundpuddle_h___
+
 #include "Arduino.h"
 #include <math.h>
 #include <stdio.h>
 #include "fft.h"
 #include "mapping.h"
-// #include "serial.h"
+#include "serial.h"
 #include "color.h"
 // #include "ring_buffer.h"
 
@@ -93,3 +96,5 @@ private:
 };
 
 extern SoundPuddle_class SoundPuddle;
+
+#endif
