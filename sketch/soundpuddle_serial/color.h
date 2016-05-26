@@ -1,11 +1,10 @@
-
 #ifndef color_h
 #define color_h
 
+#include "soundpuddle.h"
 #include "Arduino.h"
 #include <math.h>
 #include <stdio.h>
-
 
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
@@ -31,6 +30,7 @@ typedef enum {
     COLOR_ERR_INVALID               /**< Invalid color error */
 } color_err_t;
 
+extern unsigned long hsv_table[];
 float Hue_2_RGB( float v1, float v2, float vH );
 void HSL(float H, float S, float L, float& Rval, float& Gval, float& Bval);
 void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue);
@@ -38,5 +38,16 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
 unsigned long assemble_apa102_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global);
 unsigned long assemble_lpd8806_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val);
 void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val_max, uint32_t rgb_max, uint8_t global);
+extern uint8_t r;
+extern uint8_t g;
+extern uint8_t b;
+void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val);
+void led_output_prep();
+void led_writefft_vu(uint8_t global_val);
+void led_write_fftmap_ripple(uint8_t global_val);
+void led_writefft_ripple(uint8_t global_val);
+
+void init_multispi();
+
 
 #endif

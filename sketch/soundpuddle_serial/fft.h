@@ -2,7 +2,6 @@
 #define __FFT_H__
 #include "fixedpoint.h"
 
-
 // FFT size definition
 #define FFT_SIZE 256
 #define FFT_BIN_BUFFER_SIZE 60 // largest number of BIN that the applicaton wil map
@@ -49,5 +48,8 @@ typedef FFT_256 FFT_type;
 extern unsigned fft_output_buffer[];
 extern unsigned fft_buffer_map[];
 extern unsigned fft_mapped_buffer[];
+extern unsigned int window_blackman256[];
+extern unsigned int simple_gamma[];
+extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
 #endif

@@ -1,8 +1,5 @@
 #include "soundpuddle.h"
 
-extern unsigned int window_blackman256[];
-extern unsigned int simple_gamma[];
-
 HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
 
 // System control
@@ -20,54 +17,11 @@ volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
 volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC sampling period
 volatile int adc_buffer_quarter = 0; // flag to indicate what quarter the adc buffer is in (first, second, third, first)
 volatile int adc_buffer[FFT_SIZE]; // this array contains the input from the ADC, it is what the interrupt function writes into
-unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-// static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
 int fft_input_buffer[FFT_SIZE]; // this array contains the ADC input values for the FFT
 FFT_type myfft;
-extern unsigned int hsv_table[];
-extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S
 
-// hsv control
-
-uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 volatile uint8_t global = 0x1F; // global brightness control for the current LED (0-31 range, unused for the LPD8806)
 
-
-// FPGA configuration
-#define HWMULTISPIBASE IO_SLOT(14)
-#if 0
-
-#define SPI3BASE  IO_SLOT(8)
-#define SPI3CTL  REGISTER(SPI3BASE,0)
-#define SPI3DATA REGISTER(SPI3BASE,1)
-void init_rgb()
-{
-SPI3CTL=BIT(SPICPOL)|BIT(SPISRE)|BIT(SPIEN)|BIT(SPIBLOCK)|BIT(SPICP2)|BIT(SPICP0);
-}
-unsigned rgboff=0;
-void rgb_latch(unsigned n)
-{
-n = ((n + 63) / 64) * 3;
-while(n--) {SPI3DATA=0};
-}
-#endif
-
-
-// this function 
-void init_multispi() {
-    REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
-    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&led_buffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
-    REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
-    REGISTER(HWMULTISPIBASE,4)= 0x54 ;
-}
-
-void multispi_start() {
-    led_output_prep(); // put the LED start and stop frames into the led_buffer[]
-    delayMicroseconds(1); // this delay was added experimentally, the system hangs if there is no delay at all (VHD timing issue? TODO: debug)
-    REGISTER(HWMULTISPIBASE,0)=1;
-}
 void init_adc() {
     adc_buffer_ptr = 0;
     pinMode(ADC_MOSI,   OUTPUT);
@@ -104,88 +58,6 @@ void init_uart2() {
     inputPinForFunction(SP_MK2_UART2RX_PIN, 1); // Map input PP1 to the physical pin
     uart2.begin(115200); // set the baud rate
     //uart2.println("Starting");
-}
-
-// This function writes the LED start and stop frames to the LED memory space
-void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
-    // LED data frames
-    int i,j;
-    // start after the first entry (which is the ledstart frame), end before the last frame (ledstop)
-    for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
-        // increment through each spoke
-        for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_apa102_ledframe(r_val, g_val, b_val, global);
-        }
-    }
-    multispi_start();
-}
-
-// This function writes the LED start and stop frames to the LED memory space
-void led_output_prep() {
-    int i,j;
-    // put start and stop frames into LED memory space
-    for (i = 0; i < (NUMSPOKES); i++) {
-        // the first frame for each spoke
-        led_buffer[0][i] = ledstart; //used for the APA102
-        //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
-    }
-}
-
-// This function uses the FFT bin defined by fft_output_buffer[] and uses their magnitude to index the HSV lookup table, putting the result into led_buffer[]
-void led_writefft_vu(uint8_t global_val) {
-    if (fft_buffer_ready == 1) {
-//         digitalWrite(SP_MK2_GPIO, HIGH);
-        // LED data frames
-        int i,j;
-        for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
-            for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[i][j] = hsv_table[fft_output_buffer[i]];
-            }
-        }
-        fft_buffer_ready = 0;
-        multispi_start();
-//         digitalWrite(SP_MK2_GPIO, LOW);
-    }
-}
-
-void led_write_fftmap_ripple(uint8_t global_val) {
-    if (fft_buffer_ready == 1) {
-        digitalWrite(SP_MK2_GPIO, HIGH);
-        // LED data frames
-        int i,j;
-        for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
-            for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
-            }
-        }
-        for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[fft_mapped_buffer[i]];
-        }
-        digitalWrite(SP_MK2_GPIO, LOW);
-        fft_buffer_ready = 0;
-        multispi_start();
-    }
-}
-
-void led_writefft_ripple(uint8_t global_val) {
-    if (fft_buffer_ready == 1) {
-//         digitalWrite(SP_MK2_GPIO, HIGH);
-        // LED data frames
-        int i,j;
-        digitalWrite(SP_MK2_GPIO, HIGH);
-        for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
-            for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
-            }
-        }
-        for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[fft_output_buffer[i]];
-        }
-        digitalWrite(SP_MK2_GPIO, HIGH);
-        fft_buffer_ready = 0;
-        multispi_start();
-//         digitalWrite(SP_MK2_GPIO, LOW);
-    }
 }
 
 // FFT sample acquisition interrupt function.
