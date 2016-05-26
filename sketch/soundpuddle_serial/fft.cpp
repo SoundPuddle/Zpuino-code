@@ -11,12 +11,12 @@ extern int adc_buffer[];
 extern int adc_buffer_ready;
 extern FFT_type myfft;
 
-int fft_bin_map[] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 54, 57}; // sample rate 10426, 509hz - 2341
-int fft_bin_map_size = 24;
-
-unsigned fft_mapped_buffer[fft_bin_map_size];
+//int FFT_BIN_BUFFER_SIZE = 60; // largest FFT_BIN_BUFFER_SIZE that may be used (ex: for an application that ranges from 12 - 60 bin, this array should be size = 60)
+// int FFT_BIN_BUFFER_SIZE = 24; /
+int fft_bin_map[60];
+int fft_bin_map_default[] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 54, 57}; // default BIN map sample rate 10426, 509hz - 2341
+unsigned fft_mapped_buffer[FFT_BIN_BUFFER_SIZE];
 unsigned fft_output_buffer[FFT_SIZE/2]; // this array contains the full output of the FFT
-
 
 template<>
 	const unsigned int FFT<5>::sincostable[] = {
@@ -180,7 +180,7 @@ void perform_fft_mapped() {
         adc_buffer_ready = 0; // we're done with this ADC buffer window, enable sampling for the next window
         myfft.doFFT();
         // this for loop can run the entire length of FFT_SIZE/2, or an abbreviated length of only the BIN we're interested in for the visualization application
-        for (i=0; i<((fft_bin_map_size)-1); i++) {
+        for (i=0; i<((FFT_BIN_BUFFER_SIZE)-1); i++) {
             FFT_type::fixed v = myfft.in_real[fft_bin_map[i]]; // take only the bin we're interested in
             v.v>>=2;
             v *= v;

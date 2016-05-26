@@ -5,7 +5,7 @@
 
 // FFT size definition
 #define FFT_SIZE 256
-#define print_fft_vals 0
+#define FFT_BIN_BUFFER_SIZE 60 // largest number of BIN that the applicaton wil map
 
 #undef IMAGINARY_IN
 #define FIXEDPOINT
@@ -25,16 +25,13 @@ struct FFT
     static const int N = 1<<M;
     static const int N_D2 = N>>1;
     static const int N_M1 = N-1;
-    
     void doFFT();
     void doFFTi();
     void doInverseFFT();
     void reorder();
     static const unsigned int sincostable[];
-    
     fixed in_real[N];
     fixed in_im[N];
-    
 };
 
 typedef FFT<10> FFT_1024;
