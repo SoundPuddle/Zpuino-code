@@ -1,4 +1,7 @@
+#ifndef __FFT_H__
+#define __FFT_H__
 #include "fixedpoint.h"
+
 
 // FFT size definition
 #define FFT_SIZE 256
@@ -40,3 +43,14 @@ typedef FFT<8> FFT_256;
 typedef FFT<7> FFT_128;
 typedef FFT<6> FFT_64;
 typedef FFT<5> FFT_32;
+
+void perform_fft();
+void perform_fft_mapped();
+
+typedef FFT_256 FFT_type;
+
+extern unsigned fft_output_buffer[];
+extern unsigned fft_buffer_map[];
+extern unsigned fft_mapped_buffer[];
+
+#endif

@@ -1,6 +1,11 @@
+
+#ifndef color_h
+#define color_h
+
 #include "Arduino.h"
 #include <math.h>
 #include <stdio.h>
+
 
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
@@ -32,3 +37,6 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
 // void make_rgb_lut(float hue_offset, float hsvalue_floor, float rgain, float ggain, float bgain, int rgb_max);
 unsigned long assemble_apa102_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global);
 unsigned long assemble_lpd8806_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val);
+void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val_max, uint32_t rgb_max, uint8_t global);
+
+#endif
