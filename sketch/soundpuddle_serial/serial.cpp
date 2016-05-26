@@ -7,9 +7,6 @@
 
 extern HardwareSerial uart2; // init the UART2 HDL module, connect the MCU to ZPUino IO slot 12
 extern int vis_mode;
-extern uint8_t r;
-extern uint8_t g;
-extern uint8_t b;
 uint8_t r_temp;
 uint8_t g_temp;
 uint8_t b_temp;

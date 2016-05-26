@@ -108,8 +108,6 @@ template<>
 		0x0000fffb, // cos for LE2 256
 	};
 
-
-
 template<>
 	const unsigned int FFT<10>::sincostable[] = {
 		0x00000000, // -sin for LE2 1
@@ -156,7 +154,6 @@ extern "C" void printhex(unsigned int c)
 	printhexbyte(c>>8);
 	printhexbyte(c);
 }
-
 
 void perform_fft_mapped() {
     int i = 0;
@@ -270,4 +267,3 @@ void perform_fft() {
 //         Serial.println();
     }
 }
-
