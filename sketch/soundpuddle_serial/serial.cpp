@@ -14,12 +14,15 @@ volatile uint16_t hue_min_command;
 volatile uint16_t hue_max_command;
 volatile uint16_t val_min_command;
 volatile uint16_t val_max_command;
+extern uint16_t adc_gain;
 volatile uint16_t adc_gain_command;
+extern int adc_channel;
+volatile int adc_channel_command;
+
 uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
 uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
 uint16_t b_command = 0x0; // temporary variable to hold an incoming "b" command recieved from the serial interface
 extern uint8_t global;
-extern uint16_t adc_gain;
 
 volatile uint16_t uartcommands[3]; // temporary variable array, used in converting three ascii bytes to a three digit number
 
@@ -156,13 +159,21 @@ int read_uart_command() {
             case 'A': // ADC
                 uart2.print("A");
                 switch (uart2.read()) {
-                case 'G': // RGB
+                case 'G': // gain
                     uart2.print("G");
                     adc_gain_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
                     if (checkuartstop() == 0) {return 0;}
                     uart2.print("#");
                     adc_gain = adc_gain_command/100.0;
                     uart2.print(adc_gain);
+                    break;
+                case 'C': // channel
+                    uart2.print("C");
+                    adc_channel_command = uart2.read();
+                    if (checkuartstop() == 0) {return 0;}
+                    uart2.print("#");
+                    adc_channel = adc_channel_command;
+                    uart2.print(adc_channel);
                     break;
                 }
                 break;
