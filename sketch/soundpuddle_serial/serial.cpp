@@ -13,10 +13,10 @@ extern uint8_t b;
 uint8_t r_temp;
 uint8_t g_temp;
 uint8_t b_temp;
-volatile uint16_t  hue_min_command;
-volatile uint16_t  hue_max_command;
-volatile uint16_t  val_min_command;
-volatile uint16_t  val_max_command;
+volatile uint16_t hue_min_command;
+volatile uint16_t hue_max_command;
+volatile uint16_t val_min_command;
+volatile uint16_t val_max_command;
 volatile uint16_t adc_gain_command;
 uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
 uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
