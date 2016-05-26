@@ -18,6 +18,8 @@ extern uint16_t adc_gain;
 volatile uint16_t adc_gain_command;
 extern int adc_channel;
 volatile int adc_channel_command;
+extern int fft_bin_buffer_used;
+volatile int fft_bin_buffer_used_command;
 
 uint16_t r_command = 0x0; // temporary variable to hold an incoming "r" command recieved from the serial interface
 uint16_t g_command = 0x0; // temporary variable to hold an incoming "g" command recieved from the serial interface
@@ -155,6 +157,16 @@ int read_uart_command() {
                 break;
             case 'F': // FFT
                 uart2.print("F");
+                switch (uart2.read()) {
+                case 'S': // size
+                    uart2.print("S");
+                    fft_bin_buffer_used_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                    if (checkuartstop() == 0) {return 0;}
+                    uart2.print("#");
+                    fft_bin_buffer_used = fft_bin_buffer_used_command/100.0;
+                    uart2.print(fft_bin_buffer_used);
+                    break;
+                }
                 break;
             case 'A': // ADC
                 uart2.print("A");
