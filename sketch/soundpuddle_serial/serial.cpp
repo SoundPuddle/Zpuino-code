@@ -83,6 +83,13 @@ int read_uart_command() {
                                 if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
                                 vis_mode = 'R'; // set the mode to "solid color"
                                 break;
+                            case 'D': // toggle decay mode
+                                uart2.print("D");
+                                // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                                if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                                if (decay_enable == 1) {decay_enable = 0;}
+                                if (decay_enable == 0) {decay_enable = 1;}
+                                break;
                         }
                         break;
                     case 'S': // spiral mode

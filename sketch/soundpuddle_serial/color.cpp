@@ -6,6 +6,8 @@ extern int fft_buffer_ready;
 uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t decay_enable = 1; // control variable for ripple mode decay
+uint8_t decay_rate = 1;
 
 // FPGA configuration
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -118,6 +120,28 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
 // This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
 unsigned long assemble_apa102_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global) {
     //     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
+    return (0xff000000) | (b_val << 16) | (g_val << 8) | r_val ; // this line forces global == 0xFF, which shaves ~1mS off the loop time for the full-size soundpuddle
+    // TODO: make this an ifdef, or otherwise improve this implementation
+}
+
+unsigned long subtract_apa102_ledframe(unsigned long input_frame, uint8_t decay_rate) {
+    //     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
+//     uint8_t b_val = ((input_frame) >> 16) - decay_rate;
+//     uint8_t g_val = ((input_frame) >> 8) - decay_rate;
+    unsigned long temp = (input_frame & 0x000000ff);
+    if (temp > 0) {temp = temp - 1;}
+    else {temp = 0;}
+    uint8_t r_val = temp;
+    temp = (input_frame & 0x0000ff00) >> 8;
+    if (temp > 0) {temp = temp - 1;}
+    else {temp = 0;}
+    uint8_t g_val = temp;
+    temp = (input_frame & 0x00ff00) >> 16;
+    if (temp > 0) {temp = temp - 1;}
+    else {temp = 0;}
+    uint8_t b_val = temp;
+//     if (g_val < 0) {g_val = 0;}
+//     if (b_val < 0) {b_val = 0;}
     return (0xff000000) | (b_val << 16) | (g_val << 8) | r_val ; // this line forces global == 0xFF, which shaves ~1mS off the loop time for the full-size soundpuddle
     // TODO: make this an ifdef, or otherwise improve this implementation
 }
@@ -264,8 +288,15 @@ void led_writefftmap_ripple(uint8_t global_val) {
         int i,j;
         //first, shift the array
         for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
-            for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
+            if (decay_enable == 1) {
+                for (j = 0; j < (NUMSPOKES); j++) {
+                    led_buffer[SPOKEBUFFERSIZE-1-i][j] = subtract_apa102_ledframe(led_buffer[SPOKEBUFFERSIZE-2-i][j], decay_rate);
+                }
+            }
+            else {
+                for (j = 0; j < (NUMSPOKES); j++) {
+                    led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
+                }
             }
         }
         //next, put new data at the top of the array
