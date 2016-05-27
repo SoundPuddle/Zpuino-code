@@ -14,7 +14,7 @@ volatile uint16_t hue_min_command;
 volatile uint16_t hue_max_command;
 volatile uint16_t val_min_command;
 volatile uint16_t val_max_command;
-extern uint16_t adc_gain;
+extern float adc_gain;
 volatile uint16_t adc_gain_command;
 extern int adc_channel;
 volatile int adc_channel_command;
