@@ -31,6 +31,12 @@ while(n--) {SPI3DATA=0};
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 // static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
 
+uint8_t clamp255(int input_byte) {
+    if (input_byte > 255) {return (0xff);}
+    else if (input_byte < 0) {return (0x00);}
+    else {return input_byte;}
+}
+
 // HSL color function that is was used for soundpuddle 2012-2013. Outputs whiter and more pastel colors, due to HSL space.
 void hsl2rgb(float H, float S, float L, float& Rval, float& Gval, float& Bval) {
     if (H < 0) {H = 0;}
@@ -128,16 +134,17 @@ unsigned long subtract_apa102_ledframe(unsigned long input_frame, uint8_t decay_
     //     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
 //     uint8_t b_val = ((input_frame) >> 16) - decay_rate;
 //     uint8_t g_val = ((input_frame) >> 8) - decay_rate;
+    uint8_t decay_rate_replaceme = 1;
     unsigned long temp = (input_frame & 0x000000ff);
-    if (temp > 0) {temp = temp - 1;}
+    if (temp > 0) {temp = temp - decay_rate_replaceme;}
     else {temp = 0;}
     uint8_t r_val = temp;
     temp = (input_frame & 0x0000ff00) >> 8;
-    if (temp > 0) {temp = temp - 1;}
+    if (temp > 0) {temp = temp - decay_rate_replaceme;}
     else {temp = 0;}
     uint8_t g_val = temp;
-    temp = (input_frame & 0x00ff00) >> 16;
-    if (temp > 0) {temp = temp - 1;}
+    temp = (input_frame & 0x00ff0000) >> 16;
+    if (temp > 0) {temp = temp - decay_rate_replaceme;}
     else {temp = 0;}
     uint8_t b_val = temp;
 //     if (g_val < 0) {g_val = 0;}
@@ -301,7 +308,7 @@ void led_writefftmap_ripple(uint8_t global_val) {
         }
         //next, put new data at the top of the array
         for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[fft_output_buffer_mapped[i]];
+            led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
         }
 //         digitalWrite(SP_MK2_GPIO, LOW);
         fft_buffer_ready = 0;
