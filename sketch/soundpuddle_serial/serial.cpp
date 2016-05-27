@@ -18,6 +18,7 @@ extern uint16_t adc_gain;
 volatile uint16_t adc_gain_command;
 extern int adc_channel;
 volatile int adc_channel_command;
+extern int fft_bin_map[];
 extern int fft_bin_buffer_used;
 volatile int fft_bin_buffer_used_command;
 
@@ -47,7 +48,18 @@ int read3charmakeint() {
     for (i = 0; i < 3; i++) {
         uartcommands[i] = (int)uart2.read() - (int)48; // assume incoming byte is an ascii number (0 - 9), turn it into an int
     }
-    command = (uartcommands[0]*100)+(uartcommands[1]*10)+(uartcommands[2]); // assembly a three digit int (0-999) from thee incoming ascii chars
+    command = (uartcommands[0]*100)+(uartcommands[1]*10)+(uartcommands[2]); // assemble a three digit int (0-999) from thee incoming ascii chars
+    return(command);
+}
+
+// this function reads three ascii bytes off the serial port and assembles one integer [ex: ascii('1' '0' '2') -> int(102)]
+int read4charmakeint() {
+    int command;
+    int i = 0;
+    for (i = 0; i < 4; i++) {
+        uartcommands[i] = (int)uart2.read() - (int)48; // assume incoming byte is an ascii number (0 - 9), turn it into an int
+    }
+    command = (uartcommands[0]*1000)+(uartcommands[1]*100)+(uartcommands[2]*10)+(uartcommands[3]); // assemble a three digit int (0-999) from thee incoming ascii chars
     return(command);
 }
 
@@ -165,6 +177,18 @@ int read_uart_command() {
                     uart2.print("#");
                     fft_bin_buffer_used = fft_bin_buffer_used_command/100.0;
                     uart2.print(fft_bin_buffer_used);
+                    break;
+                case 'M': // map
+                    uart2.print("M");
+                    int mapping_read_complete = 0;
+                    int mapping_read_index = 0;
+                    int mapping_read_command = 0;
+                    while (mapping_read_complete == 0) {
+                        mapping_read_command = read4charmakeint() - 1000; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
+                        if (mapping_read_command == 8999) {return 0;} // check for the stop command
+                        else {fft_bin_map[mapping_read_index] = mapping_read_command;}
+                        mapping_read_index++;
+                    }
                     break;
                 }
                 break;
