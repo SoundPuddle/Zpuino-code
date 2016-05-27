@@ -4,7 +4,7 @@
 
 // FFT size definition
 #define FFT_SIZE 256
-#define FFT_BIN_BUFFER_SIZE 60 // largest number of BIN that the applicaton wil map
+#define FFT_BIN_BUFFER_SIZE 24 // largest number of BIN that the applicaton wil map
 
 #undef IMAGINARY_IN
 #define FIXEDPOINT
@@ -42,12 +42,13 @@ typedef FFT<5> FFT_32;
 
 void perform_fft();
 void perform_fft_mapped();
+void init_fft_bin_map(); // this function is used to take the data from fft_bin_map_command and puts it into fft_bin map. it is used during system init, as well as to execute uart commands from the BT app
 
 typedef FFT_256 FFT_type;
 
-extern unsigned fft_output_buffer[];
 extern unsigned fft_buffer_map[];
-extern unsigned fft_mapped_buffer[];
+extern unsigned fft_output_buffer[];
+extern unsigned fft_output_buffer_mapped[];
 extern unsigned int window_blackman256[];
 extern unsigned int simple_gamma[];
 extern "C" unsigned fsqrt16(unsigned); // this is in fixedpoint.S

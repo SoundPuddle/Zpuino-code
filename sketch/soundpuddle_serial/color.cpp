@@ -257,20 +257,22 @@ void led_writefft_vu(uint8_t global_val) {
     }
 }
 
-void led_write_fftmap_ripple(uint8_t global_val) {
+void led_writefftmap_ripple(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
-        digitalWrite(SP_MK2_GPIO, HIGH);
+//         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
         int i,j;
+        //first, shift the array
         for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
                 led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
             }
         }
+        //next, put new data at the top of the array
         for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[fft_mapped_buffer[i]];
+            led_buffer[1][i] = hsv_table[fft_output_buffer_mapped[i]];
         }
-        digitalWrite(SP_MK2_GPIO, LOW);
+//         digitalWrite(SP_MK2_GPIO, LOW);
         fft_buffer_ready = 0;
         multispi_start();
     }
@@ -281,16 +283,18 @@ void led_writefft_ripple(uint8_t global_val) {
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
         int i,j;
+        //first, shift the array
         digitalWrite(SP_MK2_GPIO, HIGH);
         for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
                 led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
             }
         }
+        //next, put new data at the top of the array
         for (i = 0; i < (NUMSPOKES); i++) {
             led_buffer[1][i] = hsv_table[fft_output_buffer[i]];
         }
-        digitalWrite(SP_MK2_GPIO, HIGH);
+//         digitalWrite(SP_MK2_GPIO, HIGH);
         fft_buffer_ready = 0;
         multispi_start();
 //         digitalWrite(SP_MK2_GPIO, LOW);

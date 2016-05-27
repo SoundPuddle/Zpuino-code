@@ -102,6 +102,7 @@ void init_leds() {
 
 void setup() {
     init_adc(); // start the interrupt timer and SPI communication with the external ADC
+    init_fft_bin_map; // setup the FFT bin mapping array
     init_leds(); // setup the LED and color arrays
     init_usbserial(); // turn on the ZPUino serial port connected to FTDI>USB
     init_uart2(); // turn on the UART connected to the WT32 Bluetooth module
@@ -119,7 +120,7 @@ void loop() {
 //             perform_fft();
             perform_fft_mapped();
 //             led_writefft_ripple(global);
-            led_write_fftmap_ripple(global);
+            led_writefftmap_ripple(global);
             break;
         case 'S': // spiral mode
             break;
