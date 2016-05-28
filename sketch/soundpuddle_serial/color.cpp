@@ -8,6 +8,7 @@ uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated f
 uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t decay_enable = 1; // control variable for ripple mode decay
 uint8_t decay_rate = 1;
+uint8_t vis_dir = 0; // control variable for the visualization direction, this applies to all visualizations that have a direction component (ex: ripple mode)
 
 // FPGA configuration
 #define HWMULTISPIBASE IO_SLOT(14)
@@ -279,7 +280,7 @@ void led_writefft_vu(uint8_t global_val) {
         int i,j;
         for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[i][j] = hsv_table[fft_output_buffer[i]];
+                led_buffer[i][j] = hsv_table[clamp255(fft_output_buffer[i])];
             }
         }
         fft_buffer_ready = 0;
@@ -293,22 +294,42 @@ void led_writefftmap_ripple(uint8_t global_val) {
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
         int i,j;
-        //first, shift the array
-        for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
-            if (decay_enable == 1) {
-                for (j = 0; j < (NUMSPOKES); j++) {
-                    led_buffer[SPOKEBUFFERSIZE-1-i][j] = subtract_apa102_ledframe(led_buffer[SPOKEBUFFERSIZE-2-i][j], decay_rate);
+        //first, shift the array in the correct direction
+        if (vis_dir == 0) {
+            for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
+                if (decay_enable == 1) {
+                    for (j = 0; j < (NUMSPOKES); j++) {
+                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = subtract_apa102_ledframe(led_buffer[SPOKEBUFFERSIZE-2-i][j], decay_rate);
+                    }
+                }
+                else {
+                    for (j = 0; j < (NUMSPOKES); j++) {
+                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
+                    }
                 }
             }
-            else {
-                for (j = 0; j < (NUMSPOKES); j++) {
-                    led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
-                }
+            //next, put new data at the top of the array
+            for (i = 0; i < (NUMSPOKES); i++) {
+                led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
             }
         }
-        //next, put new data at the top of the array
-        for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
+        else {
+            for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
+                if (decay_enable == 1) {
+                    for (j = 0; j < (NUMSPOKES); j++) {
+                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = subtract_apa102_ledframe(led_buffer[SPOKEBUFFERSIZE-2-i][j], decay_rate);
+                    }
+                }
+                else {
+                    for (j = 0; j < (NUMSPOKES); j++) {
+                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
+                    }
+                }
+            }
+            //next, put new data at the top of the array
+            for (i = 0; i < (NUMSPOKES); i++) {
+                led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
+            }
         }
 //         digitalWrite(SP_MK2_GPIO, LOW);
         fft_buffer_ready = 0;
@@ -330,7 +351,7 @@ void led_writefft_ripple(uint8_t global_val) {
         }
         //next, put new data at the top of the array
         for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[fft_output_buffer[i]];
+            led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer[i])];
         }
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         fft_buffer_ready = 0;

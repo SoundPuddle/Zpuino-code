@@ -47,6 +47,7 @@ void led_writefft_vu(uint8_t global_val);
 void led_writefftmap_ripple(uint8_t global_val);
 void led_writefft_ripple(uint8_t global_val);
 extern uint8_t decay_enable;
+extern uint8_t vis_dir;
 
 void init_multispi();
 
