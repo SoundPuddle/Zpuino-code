@@ -17,7 +17,6 @@ volatile uint16_t val_max_command;
 extern float adc_gain;
 volatile uint16_t adc_gain_command;
 extern int adc_channel;
-volatile int adc_channel_command;
 extern int fft_bin_map[];
 extern int fft_bin_buffer_used;
 volatile int fft_bin_buffer_used_command;
@@ -88,7 +87,8 @@ int read_uart_command() {
                                 // verify that we read the stop byte, and this was a valid packet. If so act on the command
                                 if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
                                 if (decay_enable == 1) {decay_enable = 0;}
-                                if (decay_enable == 0) {decay_enable = 1;}
+                                else if (decay_enable == 0) {decay_enable = 1;}
+                                else {decay_enable = 0;}
                                 break;
                         }
                         break;
@@ -199,8 +199,8 @@ int read_uart_command() {
                     break;
                 }
                 break;
-            case 'A': // ADC
-                uart2.print("A");
+            case 'G': // Global config
+                uart2.print("G");
                 switch (uart2.read()) {
                 case 'G': // gain
                     uart2.print("G");
@@ -212,11 +212,17 @@ int read_uart_command() {
                     break;
                 case 'C': // channel
                     uart2.print("C");
-                    adc_channel_command = uart2.read();
-                    if (checkuartstop() == 0) {return 0;}
-                    uart2.print("#");
-                    adc_channel = adc_channel_command;
-                    uart2.print(adc_channel);
+                    if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                    if (adc_channel == 0x01) {adc_channel = 0x02;}
+                    else if (adc_channel == 0x02) {adc_channel = 0x01;}
+                    else {adc_channel = DEFAULT_ADC_CHANNEL;}
+                    break;
+                case 'D': // toggle visualization direction
+                    uart2.print("D");
+                    // verify that we read the stop byte, and this was a valid packet. If so act on the command
+                    if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
+                    if (vis_dir == 1) {vis_dir = 0;}
+                    if (vis_dir == 0) {vis_dir = 1;}
                     break;
                 }
                 break;
