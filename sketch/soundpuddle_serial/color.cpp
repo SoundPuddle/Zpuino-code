@@ -6,8 +6,8 @@ extern int fft_buffer_ready;
 uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-uint8_t decay_enable = 1; // control variable for ripple mode decay
-uint8_t decay_rate = 1;
+uint8_t decay_enable = 0; // control variable for ripple mode decay
+uint8_t decay_rate = 0;
 uint8_t vis_dir = 0; // control variable for the visualization direction, this applies to all visualizations that have a direction component (ex: ripple mode)
 
 // FPGA configuration
@@ -33,7 +33,7 @@ unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its
 // static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
 
 uint8_t clamp255(int input_byte) {
-    if (input_byte > 255) {return (0xff);}
+    if (input_byte > 127) {return (127);}
     else if (input_byte < 0) {return (0x00);}
     else {return input_byte;}
 }
@@ -119,9 +119,9 @@ void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_
         }
     }
     // The LPD8806 only has 7-bit PWM, so the R,G,B channel maximums are 127
-    Rvalue = (uint8_t)(red*255.0);
-    Gvalue = (uint8_t)(green*255.0);
-    Bvalue = (uint8_t)(blue*255.0);
+    Rvalue = (uint8_t)(red*127.0);
+    Gvalue = (uint8_t)(green*127.0);
+    Bvalue = (uint8_t)(blue*127.0);
 }
 
 // This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
@@ -132,26 +132,26 @@ unsigned long assemble_apa102_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_v
 }
 
 unsigned long subtract_apa102_ledframe(unsigned long input_frame, uint8_t decay_rate) {
-    //     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
-//     uint8_t b_val = ((input_frame) >> 16) - decay_rate;
-//     uint8_t g_val = ((input_frame) >> 8) - decay_rate;
-    uint8_t decay_rate_replaceme = 1;
-    unsigned long temp = (input_frame & 0x000000ff);
-    if (temp > 0) {temp = temp - decay_rate_replaceme;}
-    else {temp = 0;}
-    uint8_t r_val = temp;
-    temp = (input_frame & 0x0000ff00) >> 8;
-    if (temp > 0) {temp = temp - decay_rate_replaceme;}
-    else {temp = 0;}
-    uint8_t g_val = temp;
-    temp = (input_frame & 0x00ff0000) >> 16;
-    if (temp > 0) {temp = temp - decay_rate_replaceme;}
-    else {temp = 0;}
-    uint8_t b_val = temp;
-//     if (g_val < 0) {g_val = 0;}
-//     if (b_val < 0) {b_val = 0;}
-    return (0xff000000) | (b_val << 16) | (g_val << 8) | r_val ; // this line forces global == 0xFF, which shaves ~1mS off the loop time for the full-size soundpuddle
-    // TODO: make this an ifdef, or otherwise improve this implementation
+//     //     return ((0xFF | global) << 24) | (b_val << 16) | (g_val << 8) | r_val ; // this line actually uses the global input
+// //     uint8_t b_val = ((input_frame) >> 16) - decay_rate;
+// //     uint8_t g_val = ((input_frame) >> 8) - decay_rate;
+//     uint8_t decay_rate_replaceme = 1;
+//     unsigned long temp = (input_frame & 0x000000ff);
+//     if (temp > 0) {temp = temp - decay_rate_replaceme;}
+//     else {temp = 0;}
+//     uint8_t r_val = temp;
+//     temp = (input_frame & 0x0000ff00) >> 8;
+//     if (temp > 0) {temp = temp - decay_rate_replaceme;}
+//     else {temp = 0;}
+//     uint8_t g_val = temp;
+//     temp = (input_frame & 0x00ff0000) >> 16;
+//     if (temp > 0) {temp = temp - decay_rate_replaceme;}
+//     else {temp = 0;}
+//     uint8_t b_val = temp;
+// //     if (g_val < 0) {g_val = 0;}
+// //     if (b_val < 0) {b_val = 0;}
+//     return (0xff000000) | (b_val << 16) | (g_val << 8) | r_val ; // this line forces global == 0xFF, which shaves ~1mS off the loop time for the full-size soundpuddle
+//     // TODO: make this an ifdef, or otherwise improve this implementation
 }
 
 // This function takes r,g,b values (ranging 0-255) and assembles a 24bit (LPD8806) or 32bit (APA102) packet. Right now it only handles the APA102.
@@ -211,7 +211,7 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
 //         Rvalue = simple_gamma[Rvalue];
 //         Gvalue = simple_gamma[Gvalue];
 //         Bvalue = simple_gamma[Bvalue];
-        hsv_table[i] = assemble_apa102_ledframe(Rvalue, Gvalue, Bvalue, global);
+        hsv_table[i] = assemble_lpd8806_ledframe(Rvalue, Gvalue, Bvalue);
 //         Serial.print("R=");
 //         Serial.print(Rvalue);
 //         Serial.print(";");
@@ -245,8 +245,17 @@ void led_output_prep() {
     int i,j;
     // put start and stop frames into LED memory space
     for (i = 0; i < (NUMSPOKES); i++) {
+        led_buffer[0][i] = lpd8806_zero;
+        led_buffer[1][i] = lpd8806_zero;
+        led_buffer[2][i] = lpd8806_zero;
+// //         led_buffer[3][i] = lpd8806_zero;
+        led_buffer[SPOKEBUFFERSIZE-1][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-2][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-3][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-4][i] = 0x00000000;
+        led_buffer[SPOKEBUFFERSIZE-5][i] = 0x00000000;
         // the first frame for each spoke
-        led_buffer[0][i] = ledstart; //used for the APA102
+//         led_buffer[0][i] = ledstart; //used for the APA102
         //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
     }
 }
@@ -265,7 +274,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
         // increment through each spoke
         for (j = 0; j < (NUMSPOKES); j++) {
-            led_buffer[i][j] = assemble_apa102_ledframe(r_val, g_val, b_val, global);
+            led_buffer[i][j] = assemble_lpd8806_ledframe(r_val, g_val, b_val);
         }
     }
     multispi_start();
@@ -310,7 +319,7 @@ void led_writefftmap_ripple(uint8_t global_val) {
             }
             //next, put new data at the top of the array
             for (i = 0; i < (NUMSPOKES); i++) {
-                led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
+                led_buffer[3][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
             }
         }
         else {
@@ -328,7 +337,7 @@ void led_writefftmap_ripple(uint8_t global_val) {
             }
             //next, put new data at the top of the array
             for (i = 0; i < (NUMSPOKES); i++) {
-                led_buffer[1][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
+                led_buffer[3][i] = hsv_table[clamp255(fft_output_buffer_mapped[i])];
             }
         }
 //         digitalWrite(SP_MK2_GPIO, LOW);
