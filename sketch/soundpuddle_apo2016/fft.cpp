@@ -11,8 +11,9 @@ extern int adc_buffer[];
 extern int adc_buffer_ready;
 extern FFT_type myfft;
 
-int fft_bin_map[FFT_BIN_BUFFER_SIZE] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 54, 57}; // default BIN map sample rate 10426, 509hz - 2341
-int fft_bin_buffer_used = 24; // the number of bin that are being used by the application. This can change during runtime
+// int fft_bin_map[FFT_BIN_BUFFER_SIZE] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 54, 57}; // default BIN map sample rate 10426, 509hz - 2341
+int fft_bin_map[FFT_BIN_BUFFER_SIZE] = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 51, 54, 57, 61, 64, 68, 72, 76, 81, 86, 91, 96}; // C4 - B6 for 10435Hz
+int fft_bin_buffer_used = 36; // the number of bin that are being used by the application. This can change during runtime
 int fft_bin_map_command[FFT_BIN_BUFFER_SIZE];
 unsigned fft_output_buffer_mapped[FFT_BIN_BUFFER_SIZE];
 unsigned fft_output_buffer[FFT_SIZE/2]; // this array contains the full output of the FFT
