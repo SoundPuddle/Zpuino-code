@@ -4,7 +4,7 @@
 extern uint8_t global;
 extern int fft_buffer_ready;
 uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-uint8_t g = 0x10; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t decay_enable = 0; // control variable for ripple mode decay
 uint8_t decay_rate = 0;
@@ -32,43 +32,11 @@ while(n--) {SPI3DATA=0};
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 // static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
 
-uint8_t clamp127(int input_byte) {
-    if (input_byte > 127) {return (127);}
+uint8_t clampbyte(int input_byte, int clamp_threshold) {
+    if (input_byte > clamp_threshold) {return (clamp_threshold);}
     else if (input_byte < 0) {return (0x00);}
     else {return input_byte;}
 }
-
-// HSL color function that is was used for soundpuddle 2012-2013. Outputs whiter and more pastel colors, due to HSL space.
-void hsl2rgb(float H, float S, float L, float& Rval, float& Gval, float& Bval) {
-    if (H < 0) {H = 0;}
-    else if (H > 1) {
-        while (H>1) {H = H - 1;}
-    }
-    if (S < 0) {S = 0;}
-    else if (S > 1) {S = 1;}
-    float var_1;
-    float var_2;
-    float Hu=H+.33;
-    float Hd=H-.33;
-    if ( S == 0 )   //HSL from 0 to 1
-    {
-        Rval = L * 127; //RGB results from 0 to 255
-        Gval = L * 127;
-        Bval = L * 127;
-    }
-    else
-    {
-        if ( L < 0.5 ) 
-            var_2 = L * ( 1 + S );
-        else
-            var_2 = ( L + S ) - ( S * L );
-        var_1 = 2 * L - var_2;
-        Rval = round(127 * Hue_2_RGB( var_1, var_2, Hu ));
-        Gval = round(127 * Hue_2_RGB( var_1, var_2, H ));
-        Bval = round(127 * Hue_2_RGB( var_1, var_2, Hd ));
-    }
-}
-
 //This function is tested good at Hackerspace, 2014-08-10. Modified from Lumenexus code.
 void hsv2rgb(float h, float s, float v, uint8_t& Rvalue, uint8_t& Gvalue, uint8_t& Bvalue) {
     float red;
@@ -194,8 +162,8 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
     uint8_t Rvalue, Gvalue, Bvalue;
     int32_t hue_range = hue_max - hue_min;
     int32_t val_range = val_max - val_min;
-    float hue_step = (float)hue_range / 255.0;
-    float val_step = (float)val_range / 255.0;
+    float hue_step = (float)hue_range / LED_CHAN_DEPTH;
+    float val_step = (float)val_range / LED_CHAN_DEPTH;
     Serial.print("hue_range=");
     Serial.println(hue_range);
     Serial.print("hue_step=");
@@ -204,9 +172,9 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
     Serial.println(val_range);
     Serial.print("val_step=");
     Serial.println(val_step);
-    for (i=0; i<256; i++) {
-        hue = (hue_min + (i * hue_step))/255;
-        val = (val_min + (i * val_step))/255;
+    for (i=0; i<(LED_CHAN_DEPTH+1); i++) {
+        hue = (hue_min + (i * hue_step))/LED_CHAN_DEPTH;
+        val = (val_min + (i * val_step))/LED_CHAN_DEPTH;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
 //         Rvalue = simple_gamma[Rvalue];
 //         Gvalue = simple_gamma[Gvalue];
@@ -289,7 +257,7 @@ void led_writefft_vu(uint8_t global_val) {
         int i,j;
         for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
             for (j = 0; j < (NUMSPOKES); j++) {
-                led_buffer[i][j] = hsv_table[clamp127(fft_output_buffer[i])];
+                led_buffer[i][j] = hsv_table[clampbyte(fft_output_buffer[i], LED_CHAN_DEPTH)];
             }
         }
         fft_buffer_ready = 0;
@@ -319,7 +287,7 @@ void led_writefftmap_ripple(uint8_t global_val) {
             }
             //next, put new data at the top of the array
             for (i = 0; i < (NUMSPOKES); i++) {
-                led_buffer[3][i] = hsv_table[clamp127(fft_output_buffer_mapped[i])];
+                led_buffer[3][i] = hsv_table[clampbyte(fft_output_buffer_mapped[i], LED_CHAN_DEPTH)];
             }
         }
         else {
@@ -337,7 +305,7 @@ void led_writefftmap_ripple(uint8_t global_val) {
             }
             //next, put new data at the top of the array
             for (i = 0; i < (NUMSPOKES); i++) {
-                led_buffer[3][i] = hsv_table[clamp127(fft_output_buffer_mapped[i])];
+                led_buffer[3][i] = hsv_table[clampbyte(fft_output_buffer_mapped[i], LED_CHAN_DEPTH)];
             }
         }
 //         digitalWrite(SP_MK2_GPIO, LOW);
@@ -360,7 +328,7 @@ void led_writefft_ripple(uint8_t global_val) {
         }
         //next, put new data at the top of the array
         for (i = 0; i < (NUMSPOKES); i++) {
-            led_buffer[1][i] = hsv_table[clamp127(fft_output_buffer[i])];
+            led_buffer[1][i] = hsv_table[clampbyte(fft_output_buffer[i], LED_CHAN_DEPTH)];
         }
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         fft_buffer_ready = 0;
