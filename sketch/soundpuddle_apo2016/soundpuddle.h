@@ -19,6 +19,7 @@
 #define SPOKEBUFFERSIZE 136 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
 #define STARTFRAMESIZE 3
 #define STOPFRAMESIZE 5
+#define LED_CHAN_DEPTH 127 // LED channel bit depth (127 for LPD8806, 255 for APA102)
 
 // LED packets (vary by LED type)
 #define ledstart 0x00000000 // APA102
