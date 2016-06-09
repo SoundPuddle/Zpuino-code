@@ -10,6 +10,9 @@ uint8_t decay_enable = 0; // control variable for ripple mode decay
 uint8_t decay_rate = 0;
 uint8_t vis_dir = 0; // control variable for the visualization direction, this applies to all visualizations that have a direction component (ex: ripple mode)
 
+uint16_t pixel_test_location = 0;
+uint16_t pixel_test_row = 0;
+
 // FPGA configuration
 #define HWMULTISPIBASE IO_SLOT(14)
 #if 0
@@ -31,6 +34,10 @@ while(n--) {SPI3DATA=0};
 
 unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
 // static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
+
+unsigned long led_buffer_test[4800]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
+// static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
+
 
 uint8_t clampbyte(int input_byte, int clamp_threshold) {
     if (input_byte > clamp_threshold) {return (clamp_threshold);}
@@ -213,15 +220,15 @@ void led_output_prep() {
     int i,j;
     // put start and stop frames into LED memory space
     for (i = 0; i < NUMSPOKES; i++) {
-        led_buffer[0][i] = lpd8806_zero;
-        led_buffer[1][i] = lpd8806_zero;
-        led_buffer[2][i] = lpd8806_zero;
+//         led_buffer[0][i] = lpd8806_zero;
+//         led_buffer[1][i] = lpd8806_zero;
+//         led_buffer[2][i] = lpd8806_zero;
 // //         led_buffer[3][i] = lpd8806_zero;
-        led_buffer[SPOKEBUFFERSIZE-1][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-2][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-3][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-4][i] = 0x00000000;
-        led_buffer[SPOKEBUFFERSIZE-5][i] = 0x00000000;
+//         led_buffer[SPOKEBUFFERSIZE-1][i] = 0x00000000;
+//         led_buffer[SPOKEBUFFERSIZE-2][i] = 0x00000000;
+//         led_buffer[SPOKEBUFFERSIZE-3][i] = 0x00000000;
+//         led_buffer[SPOKEBUFFERSIZE-4][i] = 0x00000000;
+//         led_buffer[SPOKEBUFFERSIZE-5][i] = 0x00000000;
         // the first frame for each spoke
 //         led_buffer[0][i] = ledstart; //used for the APA102
         //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
@@ -229,15 +236,21 @@ void led_output_prep() {
 }
 
 void multispi_start() {
-    led_output_prep(); // put the LED start and stop frames into the led_buffer[]
+//     led_output_prep(); // put the LED start and stop frames into the led_buffer[]
     delayMicroseconds(1); // this delay was added experimentally, the system hangs if there is no delay at all (VHD timing issue? TODO: debug)
     REGISTER(HWMULTISPIBASE,0)=1;
 }
 
+void multispi_wait_ready() {
+	while (REGISTER(HWMULTISPIBASE,0)!=0);
+}
+
 // This function writes the LED start and stop frames to the LED memory space
 void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_val) {
+    multispi_wait_ready();
     // LED data frames
-    int i,j;
+    int i = 0;
+    int j = 0;
     // start after the first entry (which is the ledstart frame), end before the last frame (ledstop)
     for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
         // increment through each spoke
@@ -245,6 +258,18 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
             led_buffer[i][j] = assemble_lpd8806_ledframe(r_val, g_val, b_val);
         }
     }
+    for (pixel_test_row = 1; pixel_test_row < (36); pixel_test_row++) {
+        // increment through each spoke
+            led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
+    }
+    pixel_test_location++;
+    pixel_test_row++;
+    if (pixel_test_location > 128) {pixel_test_location = 0;}
+    if (pixel_test_row > 35) {pixel_test_row = 0;}
+    
+//     led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
+//     led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
+    delayMicroseconds(20000);
     multispi_start();
 }
 
