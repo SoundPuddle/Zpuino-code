@@ -3,9 +3,9 @@
 
 extern uint8_t global;
 extern int fft_buffer_ready;
-uint8_t r = 0x00; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t r = 0x02; // red channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t g = 0x00; // green channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
-uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
+uint8_t b = 0x02; // blue channel for the current LED (0-255 range, truncated for 7-bit the LPD8806)
 uint8_t decay_enable = 0; // control variable for ripple mode decay
 uint8_t decay_rate = 0;
 uint8_t vis_dir = 0; // control variable for the visualization direction, this applies to all visualizations that have a direction component (ex: ripple mode)
@@ -28,16 +28,11 @@ unsigned rgboff=0;
 void rgb_latch(unsigned n)
 {
 n = ((n + 63) / 64) * 3;
-while(n--) {SPI3DATA=0};
+    while(n--) {SPI3DATA=0};
 }
 #endif
 
-unsigned long led_buffer[SPOKEBUFFERSIZE][NUMSPOKES]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-// static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
-
-unsigned long led_buffer_test[4800]; // [position of LED on its strip + 1 for start + 1 for stop][which strip amongst the circle]
-// static int fft_bin_map[] = {11, 17, 18, 19, 20, 21, 23, 24, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 46, 48, 51, 54, 65, 69, 73, 77, 82, 87, 92, 97, 103, 109, 116, 123, 118, 116, 115, 114, 114, 114, 115, 107, 119, 112, 111};
-
+unsigned long led_buffer[NUMSPOKES][SPOKEBUFFERSIZE];
 
 uint8_t clampbyte(int input_byte, int clamp_threshold) {
     if (input_byte > clamp_threshold) {return (clamp_threshold);}
@@ -162,6 +157,51 @@ unsigned long hsv_table[255] = {
     4278190080,4278190080,4278190080,4278190081,4278190081,4278190082,4278190082,4278190082,4278190083,4278190083,4278190084,4278190340,4278190340,4278190341,4278190341,4278190342,4278190598,4278190598,4278190599,4278190599,4278190856,4278190856,4278190856,4278191113,4278191113,4278191370,4278191370,4278191370,4278191627,4278191627,4278191884,4278191884,4278192140,4278192141,4278192397,4278192398,4278192654,4278192910,4278192911,4278193167,4278193168,4278193424,4278193680,4278193681,4278193937,4278194194,4278194194,4278194450,4278194707,4278194963,4278195219,4278195219,4278195219,4278195475,4278195475,4278195731,4278195731,4278195731,4278195987,4278195987,4278196243,4278196243,4278196242,4278196498,4278196498,4278196754,4278196753,4278196753,4278197009,4278197009,4278197264,4278197264,4278197264,4278197519,4278197519,4278197775,4278197774,4278197774,4278198029,4278198029,4278198284,4278198284,4278198283,4278198539,4278198538,4278198794,4278198793,4278198793,4278199048,4278199048,4278199303,4278199302,4278199302,4278199557,4278199556,4278199812,4278199811,4278199810,4278200065,4278200065,4278200320,4278265856,4278331392,4278331648,4278397184,4278462976,4278528512,4278594048,4278659840,4278725376,4278791168,4278856704,4278922240,4278988032,4279053568,4279119360,4279184896,4279250432,4279316224,4279381760,4279447552,4279513088,4279578624,4279709952,4279775488,4279841280,4279906816,4279972352,4280103680,4280169216,4280235008,4280300544,4280431616,4280497408,4280562944,4280694272,4280759808,4280825344,4280956672,4281022208,4281153536,4281219072,4281284608,4281415936,4281481472,4281612800,4281678336,4281809408,4281940736,4282006272,4282137344,4282137088,4282137088,4282202368,4282202112,4282267392,4282267136,4282266880,4282332160,4282332160,4282397440,4282397184,4282396928,4282462208,4282461952,4282527232,4282526976,4282526720,4282591744,4282591488,4282656768,4282656512,4282656256,4282721536,4282721280,4282786560,4282786048,4282785792,4282851072,4282850816,4282915840,4282915584,4282915328,4282980608,4282980096,4283045376,4283045120,4283044608,4283109888,4283109376,4283174656,4283174400,4283173888,4283239168,4283238656,4283303936,4283303424,4283303168,4283368192,4283367936,4283432961,4283432962,4283432964,4283498502,4283498503,4283564041,4283564043,4283564044,4283629582,4283629584,4283695121,4283695123,4283695125,4283760663,4283760665,4283826202,4283826204,4283826206,4283891744,4283891746,4283957284,4283957286,4283957288,4284022825,4284022827,4284088365,4284088367,4284088369,4284153907,4284153909,4284219448,4284219450,4284219452,4284284990,4284284992,4284350530,4284350532,4284350534,4284416073,4284416075,4284481613,4284481615,4284481618,4284547156,4284547158,4284612696,4284612699,4284612701,4284678239,4284678242,4284678244,4284547428,4284481892,4284350821,4284219749   
 };
 
+// void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val_max, uint32_t rgb_max, uint8_t global) {
+// //     delay(2000);
+//     int i = 0;
+//     float hue, val;
+//     uint8_t Rvalue, Gvalue, Bvalue;
+//     int32_t hue_range = hue_max - hue_min;
+//     int32_t val_range = val_max - val_min;
+//     float hue_step = (float)hue_range / (float)LED_CHAN_DEPTH;
+//     float val_step = (float)val_range / (float)LED_CHAN_DEPTH;
+//     Serial.print("hue_range=");
+//     Serial.println(hue_range);
+//     Serial.print("hue_step=");
+//     Serial.println(hue_step);
+//     Serial.print("val_range=");
+//     Serial.println(val_range);
+//     Serial.print("val_step=");
+//     Serial.println(val_step);
+//     for (i=0; i<(LED_CHAN_DEPTH); i++) {
+//         hue = ((float)hue_min + (i * hue_step));
+//         val = ((float)val_min + (i * val_step));
+//         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
+// //         Rvalue = simple_gamma[Rvalue];
+// //         Gvalue = simple_gamma[Gvalue];
+// //         Bvalue = simple_gamma[Bvalue];
+//         hsv_table[i] = assemble_lpd8806_ledframe(Rvalue, Gvalue, Bvalue);
+// //         Serial.print("R=");
+// //         Serial.print(Rvalue);
+// //         Serial.print(";");
+// //         Serial.print("G=");
+// //         Serial.print(Gvalue);
+// //         Serial.print(";");
+// //         Serial.print("B=");
+// //         Serial.print(Bvalue);
+// //         Serial.print(";");
+//         Serial.print(hsv_table[i]);
+//         Serial.print(";");
+// //         Serial.print(ug);
+// //         Serial.print(";");
+// //         Serial.print(ub);
+// //         Serial.print(";");
+//         Serial.println();
+//     }
+//     Serial.println();
+// }
+
 void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val_max, uint32_t rgb_max, uint8_t global) {
 //     delay(2000);
     int i = 0;
@@ -169,24 +209,24 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
     uint8_t Rvalue, Gvalue, Bvalue;
     int32_t hue_range = hue_max - hue_min;
     int32_t val_range = val_max - val_min;
-    float hue_step = (float)hue_range / LED_CHAN_DEPTH;
-    float val_step = (float)val_range / LED_CHAN_DEPTH;
-    Serial.print("hue_range=");
-    Serial.println(hue_range);
-    Serial.print("hue_step=");
-    Serial.println(hue_step);
-    Serial.print("val_range=");
-    Serial.println(val_range);
-    Serial.print("val_step=");
-    Serial.println(val_step);
-    for (i=0; i<(LED_CHAN_DEPTH+1); i++) {
-        hue = (hue_min + (i * hue_step))/LED_CHAN_DEPTH;
-        val = (val_min + (i * val_step))/LED_CHAN_DEPTH;
+    float hue_step = (float)hue_range / 255.0;
+    float val_step = (float)val_range / 255.0;
+//     Serial.print("hue_range=");
+//     Serial.println(hue_range);
+//     Serial.print("hue_step=");
+//     Serial.println(hue_step);
+//     Serial.print("val_range=");
+//     Serial.println(val_range);
+//     Serial.print("val_step=");
+//     Serial.println(val_step);
+    for (i=0; i<255; i++) {
+        hue = (hue_min + (i * hue_step))/255;
+        val = (val_min + (i * val_step))/255;
         hsv2rgb(hue, 0.99, val, Rvalue, Gvalue, Bvalue);
 //         Rvalue = simple_gamma[Rvalue];
 //         Gvalue = simple_gamma[Gvalue];
 //         Bvalue = simple_gamma[Bvalue];
-        hsv_table[i] = assemble_lpd8806_ledframe(Rvalue, Gvalue, Bvalue);
+        hsv_table[i] = assemble_lpd8806_ledframe(Rvalue, Bvalue, Gvalue);
 //         Serial.print("R=");
 //         Serial.print(Rvalue);
 //         Serial.print(";");
@@ -196,15 +236,15 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
 //         Serial.print("B=");
 //         Serial.print(Bvalue);
 //         Serial.print(";");
-        Serial.print(hsv_table[i]);
-        Serial.print(";");
+//         Serial.print(hsv_table[i]);
+//         Serial.print(";");
 //         Serial.print(ug);
 //         Serial.print(";");
 //         Serial.print(ub);
 //         Serial.print(";");
-        Serial.println();
+//         Serial.println();
     }
-    Serial.println();
+//     Serial.println();
 }
 
 // this function 
@@ -252,24 +292,24 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     int i = 0;
     int j = 0;
     // start after the first entry (which is the ledstart frame), end before the last frame (ledstop)
-    for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
+    for (i = 1; i < NUMSPOKES; i++) {
         // increment through each spoke
-        for (j = 0; j < NUMSPOKES; j++) {
+        for (j = 0; j < SPOKEBUFFERSIZE; j++) {
             led_buffer[i][j] = assemble_lpd8806_ledframe(r_val, g_val, b_val);
         }
     }
-    for (pixel_test_row = 1; pixel_test_row < (36); pixel_test_row++) {
-        // increment through each spoke
-            led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
-    }
-    pixel_test_location++;
-    pixel_test_row++;
-    if (pixel_test_location > 128) {pixel_test_location = 0;}
-    if (pixel_test_row > 35) {pixel_test_row = 0;}
-    
-//     led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
-//     led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
-    delayMicroseconds(20000);
+//     for (pixel_test_row = 1; pixel_test_row < (36); pixel_test_row++) {
+//         // increment through each spoke
+//             led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
+//     }
+//     pixel_test_location++;
+//     pixel_test_row++;
+//     if (pixel_test_location > 128) {pixel_test_location = 0;}
+//     if (pixel_test_row > 35) {pixel_test_row = 0;}
+//     
+// //     led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
+// //     led_buffer[pixel_test_location][pixel_test_row] = 4282656256;
+//     delayMicroseconds(20000);
     multispi_start();
 }
 
@@ -279,9 +319,10 @@ void led_writefft_vu(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
-        int i,j;
-        for (i = 1; i < (36); i++) {
-            for (j = 0; j < (128); j++) {
+        int i = 0;
+        int j = 0;
+        for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
+            for (j = 0; j < (SPOKEBUFFERSIZE); j++) {
                 led_buffer[i][j] = hsv_table[clampbyte(fft_output_buffer[i], LED_CHAN_DEPTH)];
             }
         }
@@ -297,41 +338,15 @@ void led_writefftmap_ripple(uint8_t global_val) {
         // LED data frames
         int i,j;
         //first, shift the array in the correct direction
-        if (vis_dir == 0) {
-            for (i = STARTFRAMESIZE; i < (SPOKEBUFFERSIZE-1); i++) {
-                if (decay_enable == 1) {
-                    for (j = 0; j < (NUMSPOKES); j++) {
-                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = subtract_apa102_ledframe(led_buffer[SPOKEBUFFERSIZE-2-i][j], decay_rate);
-                    }
+        for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
+                for (j = 0; j < (NUMSPOKES); j++) {
+                    led_buffer[j][SPOKEBUFFERSIZE-1-i] = led_buffer[j][SPOKEBUFFERSIZE-2-i];
                 }
-                else {
-                    for (j = 0; j < (NUMSPOKES); j++) {
-                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
-                    }
-                }
-            }
-            //next, put new data at the top of the array
-            for (i = 0; i < (NUMSPOKES); i++) {
-                led_buffer[3][i] = hsv_table[clampbyte(fft_output_buffer_mapped[i], LED_CHAN_DEPTH)];
-            }
+//             }
         }
-        else {
-            for (i = 0; i < (SPOKEBUFFERSIZE-1); i++) {
-                if (decay_enable == 1) {
-                    for (j = 0; j < (NUMSPOKES); j++) {
-                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = subtract_apa102_ledframe(led_buffer[SPOKEBUFFERSIZE-2-i][j], decay_rate);
-                    }
-                }
-                else {
-                    for (j = 0; j < (NUMSPOKES); j++) {
-                        led_buffer[SPOKEBUFFERSIZE-1-i][j] = led_buffer[SPOKEBUFFERSIZE-2-i][j];
-                    }
-                }
-            }
-            //next, put new data at the top of the array
-            for (i = 0; i < (NUMSPOKES); i++) {
-                led_buffer[3][i] = hsv_table[clampbyte(fft_output_buffer_mapped[i], LED_CHAN_DEPTH)];
-            }
+        //next, put new data at the top of the array
+        for (i = 0; i < (NUMSPOKES); i++) {
+            led_buffer[i][0] = hsv_table[fft_output_buffer_mapped[i]];
         }
 //         digitalWrite(SP_MK2_GPIO, LOW);
         fft_buffer_ready = 0;
