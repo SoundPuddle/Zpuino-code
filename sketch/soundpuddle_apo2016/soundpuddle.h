@@ -16,12 +16,7 @@
 
 // LED array dimensions
 #define NUMSPOKES 36 // number of strips (index at 1, i.e. 12 strips = 12)
-#define SPOKEBUFFERSIZE 127 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
-#define SPIFRAMESIZE 500 // number of leds per SPI channel + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
-#define NUMSPI 16 // number of SPI channels (==12 for a SP2 PCB)
-#define STARTFRAMESIZE 3
-#define STOPFRAMESIZE 5
-#define LED_CHAN_DEPTH 127 // LED channel bit depth (127 for LPD8806, 255 for APA102)
+#define SPOKEBUFFERSIZE 128 // number of leds per strip + start and stop frame count (ex: 16 APA102 LEDs with 1 START frame and 1 STOP frame would have SPOKEBUFFERSIZE == 18)
 
 // LED packets (vary by LED type)
 #define ledstart 0x00000000 // APA102

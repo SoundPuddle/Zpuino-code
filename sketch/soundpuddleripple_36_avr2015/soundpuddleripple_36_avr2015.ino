@@ -387,7 +387,7 @@ static void interpolate_buffer_shift() {
 	    outbuffer[z+1] = pixel;
 	  }
 	  outbuffer[0] = 0;
-	  controller_start();	 
+	  controller_start();
 	  Serial.print("s");
 }
 
