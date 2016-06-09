@@ -280,8 +280,8 @@ void led_writefft_vu(uint8_t global_val) {
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
         int i,j;
-        for (i = 1; i < (SPOKEBUFFERSIZE); i++) {
-            for (j = 0; j < (NUMSPOKES); j++) {
+        for (i = 1; i < (36); i++) {
+            for (j = 0; j < (128); j++) {
                 led_buffer[i][j] = hsv_table[clampbyte(fft_output_buffer[i], LED_CHAN_DEPTH)];
             }
         }
