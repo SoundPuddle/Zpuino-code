@@ -207,7 +207,7 @@ int read_uart_command() {
                     adc_gain_command = read3charmakeint() - 100; // offset 100 for ascii conversion convenience (force transmission of 3 chars)
                     if (checkuartstop() == 0) {return 0;}
                     uart2.print("#");
-                    adc_gain = adc_gain_command/100.0;
+                    adc_gain = adc_gain_command/10.0;
                     uart2.print(adc_gain);
                     break;
                 case 'C': // channel
