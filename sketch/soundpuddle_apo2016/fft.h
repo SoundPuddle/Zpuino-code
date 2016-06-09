@@ -3,7 +3,7 @@
 #include "fixedpoint.h"
 
 // FFT size definition
-#define FFT_SIZE 256
+#define FFT_SIZE 512
 #define FFT_BIN_BUFFER_SIZE 36 // largest number of BIN that the applicaton wil map
 
 #undef IMAGINARY_IN

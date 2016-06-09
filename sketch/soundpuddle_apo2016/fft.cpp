@@ -174,7 +174,7 @@ void perform_fft_mapped() {
             }
         }
 //         digitalWrite(SP_MK2_GPIO, HIGH);
-        int i;
+        i = 0;
         fft_buffer_ready = 0;
         //move the ADC buffer to the FFT real input
         for (i=0; i<FFT_SIZE; i++) {

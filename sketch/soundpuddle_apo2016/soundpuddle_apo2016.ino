@@ -4,18 +4,17 @@ HardwareSerial uart2(12); // init the UART2 HDL module, connect the MCU to ZPUin
 
 // System control
 int sysdelay = 1; // main while loop delay in (uS)
-int vis_mode = 'R'; // variable for visualization switch mode (0=debug, R=ripple, S=spiral, V=VU mmeter, C=solid color)
+int vis_mode = 'C'; // variable for visualization switch mode (0=debug, R=ripple, S=spiral, V=VU mmeter, C=solid color)
 volatile int uartcommand = 1; // this variable holds the serial command from the BT application. TODO replace me with a better infrastructure
 
 // ADC and FFT configuration
 float adc_gain = 5;
-int fft_div = 2; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
+int fft_div = 16; // this variable controls how many FFTs are run within one complete sample window (complete sample window == (1/samplerate) * FFT_size)), valid options = (1,2,4,8)
 int fft_subwindowsize = FFT_SIZE/fft_div;
 volatile int fft_buffer_ready = 0;
 volatile int adc_channel = DEFAULT_ADC_CHANNEL; // specify the ADC channel, can be changed during run-time
 volatile unsigned int adc_buffer_ptr; // pointer for the current ADC sample
 volatile int adc_buffer_ready = 0; // flag to indicate status of the ADC sampling period
-volatile int adc_buffer_quarter = 0; // flag to indicate what quarter the adc buffer is in (first, second, third, first)
 volatile int adc_buffer[FFT_SIZE]; // this array contains the input from the ADC, it is what the interrupt function writes into
 int fft_input_buffer[FFT_SIZE]; // this array contains the ADC input values for the FFT
 FFT_type myfft;

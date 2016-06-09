@@ -42,7 +42,7 @@ float rgain = 1.0; // red channel gain for the HSV color generation function
 float ggain = 0.9; // gree channel gain for the HSV color generation function
 float bgain = 0.9; // blue channel gain for the HSV color generation function
 float rgbgain = 1.0; // global rgb channel gain for the HSV color generation function
-int adc_gain = 4.20;
+int adc_gain = 8.20;
 int clamp_value = 32;
 int rgb_total = 32 * 3; //maximum sum of the r, g, b channels
 
@@ -598,7 +598,7 @@ void loop()
 	  controller_wait_ready();
 	  shift_buffer();
 	  for (z=0; z<BUFFERSIZE; z++) {
-	    //i = fftbuffermap[(z+spin_position)%BUFFERSIZE];
+	    i = fftbuffermap[(z+spin_position)%BUFFERSIZE];
 	    i = fftbuffermap[z];
 	    FFT_type::fixed v = myfft.in_real[i];
 	    v.v>>=2;
