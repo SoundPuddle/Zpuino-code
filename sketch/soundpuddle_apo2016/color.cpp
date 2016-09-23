@@ -368,7 +368,8 @@ void led_writefftmap_ripple(uint8_t global_val) {
 //             unsigned temp = fft_output_buffer_mapped[i];
 //             if (temp > 127) {temp = 127;}
 // 	    bin_val_new[i] = temp;
-            outbuffer[i+1] = hsv_table[clamp127(fft_output_buffer_mapped[i])]; // use the precomputed hsv
+            //outbuffer[i+1] = hsv_table[clamp127(fft_output_buffer_mapped[i])]; // use the precomputed hsv
+            outbuffer[i+1] = hsv_table[127]; // use the precomputed hsv
         }
         outbuffer[0] = 0;
 //         //next, put new data at the top of the array
