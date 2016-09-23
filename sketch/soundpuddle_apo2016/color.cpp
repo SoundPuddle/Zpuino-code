@@ -44,7 +44,7 @@ uint8_t clampbyte(int input_byte, int clamp_threshold) {
 }
 
 uint8_t clamp127(int input_byte) {
-    if (input_byte > 127) {return (127);}
+    if (input_byte >= 127) {return (126);}
     else if (input_byte < 0) {return (0x00);}
     else {return input_byte;}
 }
