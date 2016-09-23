@@ -45,6 +45,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
 void led_output_prep();
 void led_writefft_vu(uint8_t global_val);
 void led_writefftmap_ripple(uint8_t global_val);
+void led_writefftmap_ripple_decay(uint8_t global_val);
 void led_writefft_ripple(uint8_t global_val);
 extern uint8_t decay_enable;
 extern uint8_t vis_dir;
