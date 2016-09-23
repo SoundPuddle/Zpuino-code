@@ -84,6 +84,7 @@ int read_uart_command() {
                                 break;
                             case 'D': // toggle decay mode
                                 uart2.print("D");
+                                vis_mode = 'D';
                                 // verify that we read the stop byte, and this was a valid packet. If so act on the command
                                 if (checkuartstop() == 0) {return 0;} // verify that we read the stop byte. If valid, continue function, if invalid return error
                                 if (decay_enable == 1) {decay_enable = 0;}
