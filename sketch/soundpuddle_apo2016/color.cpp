@@ -388,7 +388,11 @@ void led_writefftmap_ripple(uint8_t global_val) {
 void shift_buffer_decay(void) {
     int i;
     for (i = ((SPOKEBUFFERSIZE-1)*NUMSPOKES) + 1; i >= 0; i--) {
-        outbuffer[i+NUMSPOKES] = subtract_lpd8806_ledframe(outbuffer[i]);
+        if (i % 2 == 0) {
+            outbuffer[i+NUMSPOKES] = subtract_lpd8806_ledframe(outbuffer[i]);
+        } else {
+            outbuffer[i+NUMSPOKES] = outbuffer[i];
+        }
     }
 }
 
