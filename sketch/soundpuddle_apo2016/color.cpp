@@ -292,21 +292,10 @@ void shift_buffer() {
 
 // This function writes the LED start and stop frames to the LED memory space
 void led_output_prep() {
-    int i,j;
-    // put start and stop frames into LED memory space
-    for (i = 0; i < NUMSPOKES; i++) {
-//         led_buffer[0][i] = lpd8806_zero;
-//         led_buffer[1][i] = lpd8806_zero;
-//         led_buffer[2][i] = lpd8806_zero;
-// //         led_buffer[3][i] = lpd8806_zero;
-//         led_buffer[SPOKEBUFFERSIZE-1][i] = 0x00000000;
-//         led_buffer[SPOKEBUFFERSIZE-2][i] = 0x00000000;
-//         led_buffer[SPOKEBUFFERSIZE-3][i] = 0x00000000;
-//         led_buffer[SPOKEBUFFERSIZE-4][i] = 0x00000000;
-//         led_buffer[SPOKEBUFFERSIZE-5][i] = 0x00000000;
-        // the first frame for each spoke
-//         led_buffer[0][i] = ledstart; //used for the APA102
-        //         led_buffer[SPOKEBUFFERSIZE-1][i] = ledstop; // it seems like the APA102c doesn't need this stop frame
+    outbuffer_raw[0] = 0;
+    int i;
+    for (i = 0; i < (SPOKEBUFFERSIZE*NUMSPOKES); i++) {
+        outbuffer[i] = lpd8806_zero;
     }
 }
 
