@@ -346,7 +346,7 @@ void led_writefft_vu(uint8_t global_val) {
         int ring = 0;
         for (spoke = 0; spoke < (NUMSPOKES); spoke++) {
             for (ring = 0; ring < (SPOKEBUFFERSIZE); ring++) {
-                outbuffer[(ring*NUMSPOKES)+spoke] = hsv_table[clamp127(fft_output_buffer[ring])];
+                outbuffer[1+(ring*NUMSPOKES)+spoke] = hsv_table[clamp127(fft_output_buffer[ring])];
             }
         }
         fft_buffer_ready = 0;
