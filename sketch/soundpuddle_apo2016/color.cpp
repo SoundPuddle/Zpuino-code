@@ -385,10 +385,10 @@ void led_writefftmap_ripple(uint8_t global_val) {
     }
 }
 
-void buffer_decay(void) {
-    int i = 0;
-    for (i = 0; i < (NUMSPOKES*SPOKEBUFFERSIZE) - 1; i++) {
-        outbuffer[i] = subtract_lpd8806_ledframe(outbuffer[i]);
+void shift_buffer_decay(void) {
+    int i;
+    for (i = ((SPOKEBUFFERSIZE-1)*NUMSPOKES) + 1; i >= 0; i--) {
+        outbuffer[i+NUMSPOKES] = subtract_lpd8806_ledframe(outbuffer[i]);
     }
 }
 
@@ -396,11 +396,8 @@ void led_writefftmap_ripple_decay(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
         multispi_wait_ready();
 
-        // Subtract 1 from every value in the buffer
-        buffer_decay();
-
         //first, shift the array in the correct direction
-        shift_buffer();
+        shift_buffer_decay();
 
         int i,j;
         for (i = 0; i < NUMSPOKES; i++) {
