@@ -9,7 +9,8 @@ uint8_t b = 0x00; // blue channel for the current LED (0-255 range, truncated fo
 uint8_t decay_enable = 0; // control variable for ripple mode decay
 uint8_t decay_rate = 0;
 uint8_t vis_dir = 0; // control variable for the visualization direction, this applies to all visualizations that have a direction component (ex: ripple mode)
-unsigned outbuffer[1 + (NUMSPOKES*SPOKEBUFFERSIZE) ]; // one extra, to hold 0x00000000
+unsigned outbuffer_raw[1 + (NUMSPOKES*SPOKEBUFFERSIZE) ]; // one extra, to hold 0x00000000
+unsigned * const outbuffer = &outbuffer_raw[1];
 uint16_t pixel_test_location = 0;
 uint16_t pixel_test_row = 0;
 
@@ -259,14 +260,14 @@ void make_rgb_lut(int32_t hue_min, int32_t hue_max, int32_t val_min, int32_t val
 // this function 
 void init_multispi() {
     REGISTER(HWMULTISPIBASE,1)= (unsigned long)&ledmapping[0]; // SPI flash offset
-    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&outbuffer[0];//(unsigned)&myfft.in_real[0].v; // base memory address
+    REGISTER(HWMULTISPIBASE,2)= (unsigned long)&outbuffer_raw[0];//(unsigned)&myfft.in_real[0].v; // base memory address
     REGISTER(HWMULTISPIBASE,3)= DIRECTMAP_OFFSET;
     REGISTER(HWMULTISPIBASE,4)= 0x54 ;
 }
 
 void shift_buffer() {
 	int i;
-	for (i = ((SPOKEBUFFERSIZE-1)*NUMSPOKES); i!=0; i--) {
+	for (i = ((SPOKEBUFFERSIZE-1)*NUMSPOKES) + 1; i >= 0; i--) {
 		outbuffer[i+NUMSPOKES] = outbuffer[i];
 	}
 }
@@ -316,7 +317,7 @@ void led_writeall(uint8_t r_val, uint8_t g_val, uint8_t b_val, uint8_t global_va
     // start after the first entry (which is the ledstart frame), end before the last frame (ledstop)
     //for (i = 1; i < NUMSPOKES; i++) {
         // increment through each spoke
-        for (j = 1; j < ((NUMSPOKES*SPOKEBUFFERSIZE)); j++) {
+        for (j = 0; j < (NUMSPOKES*SPOKEBUFFERSIZE) - 1; j++) {
 //             led_buffer[i][j] = assemble_lpd8806_ledframe(r_val, g_val, b_val);
             outbuffer[j] =  assemble_lpd8806_ledframe(r_val, g_val, b_val);
         }
@@ -346,7 +347,7 @@ void led_writefft_vu(uint8_t global_val) {
         int ring = 0;
         for (spoke = 0; spoke < (NUMSPOKES); spoke++) {
             for (ring = 0; ring < (SPOKEBUFFERSIZE); ring++) {
-                outbuffer[1+(ring*NUMSPOKES)+spoke] = hsv_table[clamp127(fft_output_buffer[ring])];
+                outbuffer[(ring*NUMSPOKES)+spoke] = hsv_table[clamp127(fft_output_buffer[ring])];
             }
         }
         fft_buffer_ready = 0;
@@ -368,9 +369,8 @@ void led_writefftmap_ripple(uint8_t global_val) {
 //             unsigned temp = fft_output_buffer_mapped[i];
 //             if (temp > 127) {temp = 127;}
 // 	    bin_val_new[i] = temp;
-            outbuffer[i+1] = hsv_table[clamp127(fft_output_buffer_mapped[i])]; // use the precomputed hsv
+            outbuffer[i] = hsv_table[clamp127(fft_output_buffer_mapped[i])]; // use the precomputed hsv
         }
-        outbuffer[0] = 0;
 //         //next, put new data at the top of the array
 //         for (i = 0; i < (NUMSPOKES); i++) {
 //             led_buffer[i][0] = hsv_table[fft_output_buffer_mapped[i]];
