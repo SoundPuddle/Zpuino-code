@@ -386,9 +386,13 @@ void led_writefftmap_ripple(uint8_t global_val) {
 }
 
 void buffer_decay(void) {
-    int i = 0;
-    for (i = 0; i < (NUMSPOKES*SPOKEBUFFERSIZE) - 1; i += 2) {
-        outbuffer[i] = subtract_lpd8806_ledframe(outbuffer[i]);
+    int spoke = 0;
+    int ring = 0;
+    for (spoke = 0; spoke < (NUMSPOKES); spoke++) {
+        for (ring = 0; ring < (SPOKEBUFFERSIZE); ring += 2) {
+            int index = (ring*NUMSPOKES)+spoke;
+            outbuffer[index] = subtract_lpd8806_ledframe(outbuffer[index]);
+        }
     }
 }
 
