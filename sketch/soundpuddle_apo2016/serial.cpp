@@ -171,6 +171,7 @@ int read_uart_command() {
                     if (checkuartstop() == 0) {return 0;}
                     uart2.print("#");
                     make_rgb_lut(hue_min_command, hue_max_command, val_min_command, val_max_command, 32, global);
+                    //(0, 230, 0, 127, 32, global)
                     break;
                 }
                 break;
