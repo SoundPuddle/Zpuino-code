@@ -373,7 +373,7 @@ void led_writefftmap_ripple(uint8_t global_val) {
 //             unsigned temp = fft_output_buffer_mapped[i];
 //             if (temp > 127) {temp = 127;}
 // 	    bin_val_new[i] = temp;
-            outbuffer[i+1] = assemble_apa102_ledframe(val, val, val);
+            outbuffer[i+1] = assemble_lpd8806_ledframe(val, val, val);
         }
         outbuffer[0] = 0;
 //         //next, put new data at the top of the array
