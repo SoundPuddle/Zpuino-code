@@ -116,25 +116,34 @@ void loop() {
     switch (vis_mode) {
         // debug case, bring solid color
         case 'R': // ripple mode case "soundpuddle classic" TODO finish this
-//             perform_fft();
             perform_fft_mapped();
-//             led_writefft_ripple(global);
             led_writefftmap_ripple(global);
             break;
+
         case 'S': // spiral mode
             break;
+
         case 'I': // ring mode
             break;
+
         case 'V': // VU meter mode
             perform_fft();
             led_writefft_vu(global);
             break;
+
+        case 'D': // decay mode
+            perform_fft_mapped();
+            led_writefftmap_ripple_decay(global);
+            break;
+
         case 'C': // solid-color mode
             led_writeall(r,g,b,global);
             break;
+
         case 'P': // pause mode
             // pause (do nothing)
             break;
+
         default:
 //             uart2.print("DEFAULT CASE");
             break;

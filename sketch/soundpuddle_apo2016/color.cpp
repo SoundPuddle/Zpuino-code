@@ -140,6 +140,18 @@ unsigned long assemble_lpd8806_ledframe(uint8_t r_val, uint8_t g_val, uint8_t b_
     return (0x808080 | (b_val << 16) | (r_val << 8) | g_val) << 8 ;
 }
 
+unsigned long subtract_lpd8806_ledframe(unsigned long frame) {
+    uint8_t g_val = (frame >> 8)  & 0x7F;
+    uint8_t r_val = (frame >> 16) & 0x7F;
+    uint8_t b_val = (frame >> 24) & 0x7F;
+
+    r_val = (r_val == 0) ? 0 : r_val - 1;
+    g_val = (g_val == 0) ? 0 : g_val - 1;
+    b_val = (b_val == 0) ? 0 : b_val - 1;
+
+    return assemble_lpd8806_ledframe(r_val, g_val, b_val);
+}
+
 // This gamma function is power(x, 2.5) where i = (x/255) for range i = 0 - 255
 unsigned int simple_gamma[255] = {
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,13,13,14,14,14,15,15,16,16,17,17,18,18,19,19,20,21,21,22,22,23,23,24,25,25,26,27,27,28,29,29,30,31,31,32,33,34,34,35,36,37,37,38,39,40,41,42,42,43,44,45,46,47,48,49,50,51,52,52,53,54,55,56,57,59,60,61,62,63,64,65,66,67,68,69,71,72,73,74,75,77,78,79,80,82,83,84,85,87,88,89,91,92,93,95,96,98,99,100,102,103,105,106,108,109,111,112,114,115,117,119,120,122,123,125,127,128,130,132,133,135,137,138,140,142,144,145,147,149,151,153,155,156,158,160,162,164,166,168,170,172,174,176,178,180,182,184,186,188,190,192,194,197,199,201,203,205,207,210,212,214,216,219,221,223,226,228,230,233,235,237,240,242,245,247,250,252,255};
@@ -358,24 +370,43 @@ void led_writefft_vu(uint8_t global_val) {
 
 void led_writefftmap_ripple(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
-//         digitalWrite(SP_MK2_GPIO, HIGH);
-        // LED data frames
-        int i,j;
-        //first, shift the array in the correct direction
         multispi_wait_ready();
+
+        //first, shift the array in the correct direction
         shift_buffer();
+
+        int i,j;
         for (i = 0; i < NUMSPOKES; i++) {
-// 	    bin_val_old[i] = bin_val_new[i];
-//             unsigned temp = fft_output_buffer_mapped[i];
-//             if (temp > 127) {temp = 127;}
-// 	    bin_val_new[i] = temp;
             outbuffer[i] = hsv_table[clamp127(fft_output_buffer_mapped[i])]; // use the precomputed hsv
         }
-//         //next, put new data at the top of the array
-//         for (i = 0; i < (NUMSPOKES); i++) {
-//             led_buffer[i][0] = hsv_table[fft_output_buffer_mapped[i]];
-//         }
-//         digitalWrite(SP_MK2_GPIO, LOW);
+
+        fft_buffer_ready = 0;
+        multispi_start();
+    }
+}
+
+void buffer_decay(void) {
+    int i = 0;
+    for (i = 0; i < (NUMSPOKES*SPOKEBUFFERSIZE) - 1; i++) {
+        outbuffer[i] = subtract_lpd8806_ledframe(outbuffer[i]);
+    }
+}
+
+void led_writefftmap_ripple_decay(uint8_t global_val) {
+    if (fft_buffer_ready == 1) {
+        multispi_wait_ready();
+
+        // Subtract 1 from every value in the buffer
+        buffer_decay();
+
+        //first, shift the array in the correct direction
+        shift_buffer();
+
+        int i,j;
+        for (i = 0; i < NUMSPOKES; i++) {
+            outbuffer[i] = hsv_table[clamp127(fft_output_buffer_mapped[i])]; // use the precomputed hsv
+        }
+
         fft_buffer_ready = 0;
         multispi_start();
     }
