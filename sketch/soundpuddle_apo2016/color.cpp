@@ -363,17 +363,17 @@ void led_writefftmap_ripple(uint8_t global_val) {
         //first, shift the array in the correct direction
         multispi_wait_ready();
         shift_buffer();
-        static char val = 0;
-        val += 1;
-        if (val == 32) {
-            val = 0;
-        }
         for (i = 0; i < NUMSPOKES; i++) {
 // 	    bin_val_old[i] = bin_val_new[i];
 //             unsigned temp = fft_output_buffer_mapped[i];
 //             if (temp > 127) {temp = 127;}
 // 	    bin_val_new[i] = temp;
-            outbuffer[i+1] = assemble_lpd8806_ledframe(val, val, val);
+            static char val = 0;
+            val += 1;
+            if (val == 32) {
+                val = 0;
+            }
+            outbuffer[i+1] = val << 16 | val << 8 | val; // use the precomputed hsv
         }
         outbuffer[0] = 0;
 //         //next, put new data at the top of the array
