@@ -368,7 +368,11 @@ void led_writefftmap_ripple(uint8_t global_val) {
 //             unsigned temp = fft_output_buffer_mapped[i];
 //             if (temp > 127) {temp = 127;}
 // 	    bin_val_new[i] = temp;
-            char val = fft_output_buffer_mapped[i] >> 25;
+            static char val = 0;
+            val += 1;
+            if (val == 32) {
+                val = 0;
+            }
             outbuffer[i+1] = val << 16 | val << 8 | val; // use the precomputed hsv
         }
         outbuffer[0] = 0;
