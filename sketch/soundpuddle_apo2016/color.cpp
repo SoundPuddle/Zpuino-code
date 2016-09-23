@@ -342,11 +342,11 @@ void led_writefft_vu(uint8_t global_val) {
     if (fft_buffer_ready == 1) {
 //         digitalWrite(SP_MK2_GPIO, HIGH);
         // LED data frames
-        int i = 0;
-        int j = 0;
-        for (i = 0; i < (NUMSPOKES); i++) {
-            for (j = 0; j < (SPOKEBUFFERSIZE); j++) {
-                outbuffer[(j*NUMSPOKES)+i] = hsv_table[clamp127(fft_output_buffer[j])];
+        int spoke = 0;
+        int ring = 0;
+        for (spoke = 0; spoke < (NUMSPOKES); spoke++) {
+            for (ring = 0; ring < (SPOKEBUFFERSIZE); ring++) {
+                outbuffer[(ring*NUMSPOKES)+spoke] = hsv_table[clamp127(fft_output_buffer[ring])];
             }
         }
         fft_buffer_ready = 0;
